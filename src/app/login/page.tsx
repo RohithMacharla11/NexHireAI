@@ -139,7 +139,7 @@ function LoginForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => v
                 <AuthButton variant="outline">
                     <Chrome className="mr-2 h-4 w-4" />
                     Login with Google
-                </Auth-Button>
+                </AuthButton>
             </div>
             
             <div className="mt-auto text-center text-sm text-muted-foreground">
@@ -235,3 +235,5 @@ const RoleOption = ({ value, icon, label }: { value: string; icon: React.ReactNo
       </Label>
     </motion.div>
 );
+
+    
