@@ -13,6 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // This effect runs only on the client, after initial render.
     try {
       const storedRole = localStorage.getItem('userRole') as UserRole | null;
       if (storedRole) {
@@ -21,8 +22,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Could not access localStorage", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
