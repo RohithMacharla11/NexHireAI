@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { EditProfileForm } from './EditProfileForm';
 import { ViewProfile } from './ViewProfile';
 import type { User } from '@/lib/types';
-import { BrainCircuit } from 'lucide-react';
+import { BrainCircuit, Pencil } from 'lucide-react';
 import { FileUpload } from '@/components/ui/file-upload';
 
 interface ProfileCardProps {
@@ -51,8 +51,8 @@ export function ProfileCard({ profileData, onProfileUpdate, onRunAnalysis }: Pro
         <div className="absolute w-full h-full backface-hidden">
           <div className="w-full rounded-3xl border border-white/10 bg-card/60 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/20">
             <div className="flex flex-col md:flex-row items-center gap-6 mb-6">
-                <motion.div whileHover={{ scale: 1.1 }} className="relative">
-                    <Avatar className="h-24 w-24 border-4 border-primary/50">
+                <div className="relative group">
+                     <Avatar className="h-24 w-24 border-4 border-primary/50">
                         <AvatarImage src={profileData.avatarUrl} alt={profileData.name} />
                         <AvatarFallback className="text-3xl bg-muted">{profileData.name?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
@@ -60,9 +60,12 @@ export function ProfileCard({ profileData, onProfileUpdate, onRunAnalysis }: Pro
                         onFileSelect={handleAvatarUpload}
                         accept="image/*"
                         id="avatar-upload-view"
-                        className="absolute inset-0 rounded-full opacity-0 cursor-pointer"
-                    />
-                </motion.div>
+                    >
+                        <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <Pencil className="h-6 w-6 text-white" />
+                        </div>
+                    </FileUpload>
+                </div>
 
               <div className="text-center md:text-left">
                 <h1 className="text-3xl font-bold">{profileData.name}</h1>

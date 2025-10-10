@@ -30,7 +30,10 @@
         "yearsOfExperience": { "type": "number" },
         "skills": { "type": "array", "items": { "type": "string" } },
         "bio": { "type": "string" },
-        "locationPreferences": { "type": "array", "items": { "type": "string" } }
+        "locationPreferences": { "type": "array", "items": { "type": "string" } },
+        "experiences": { "type": "array", "items": { "$ref": "#/backend/entities/Experience" } },
+        "projects": { "type": "array", "items": { "$ref": "#/backend/entities/Project" } },
+        "achievements": { "type": "array", "items": { "$ref": "#/backend/entities/Achievement" } }
       }
     },
     "RecruiterProfile": {
@@ -46,6 +49,37 @@
         "hiringFocus": { "type": "array", "items": { "type": "string" } },
         "locationPreferences": { "type": "array", "items": { "type": "string" } },
         "notes": { "type": "string" }
+      }
+    },
+     "Experience": {
+      "title": "Work Experience",
+      "description": "A single work experience entry.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "description": { "type": "string" }
+      }
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A single project entry.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string", "format": "uri" }
+      }
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "A single achievement or award.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" }
       }
     },
     "Analysis": {

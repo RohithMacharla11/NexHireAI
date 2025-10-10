@@ -3,6 +3,26 @@ export type Role = 'candidate' | 'recruiter';
 
 export type ExperienceLevel = 'Fresher' | 'Intermediate' | 'Experienced';
 
+export interface Experience {
+  title: string;
+  company: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface Project {
+  title: string;
+  description?: string;
+  url?: string;
+}
+
+export interface Achievement {
+  title: string;
+  description?: string;
+}
+
+
 export interface CandidateProfile {
   collegeOrUniversity?: string;
   currentCompanyOrInternship?: string;
@@ -11,6 +31,9 @@ export interface CandidateProfile {
   skills?: string[];
   bio?: string;
   locationPreferences?: string[];
+  experiences?: Experience[];
+  projects?: Project[];
+  achievements?: Achievement[];
 }
 
 export interface RecruiterProfile {

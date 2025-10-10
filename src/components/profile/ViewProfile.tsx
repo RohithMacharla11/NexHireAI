@@ -1,10 +1,11 @@
 
-import { User, Briefcase, Award, GraduationCap, Link as LinkIcon, GitBranch, Linkedin, Phone, Building, Target, Calendar, FileText, Globe, MapPin } from 'lucide-react';
+import { User, Briefcase, Award, GraduationCap, Link as LinkIcon, GitBranch, Linkedin, Phone, Building, Target, Calendar, FileText, Globe, MapPin, Trophy, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from '@/components/ui/file-upload';
 import type { User as UserType } from '@/lib/types';
+import { Separator } from '../ui/separator';
 
 export const ViewProfile = ({ profileData, onResumeUpload }: { profileData: UserType, onResumeUpload: (file: File) => void }) => {
   return profileData.role === 'candidate' 
@@ -30,6 +31,55 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload }: { profileData: Us
                     </div>
                 ) : <p className="text-foreground/60 italic">Add your skills in edit mode.</p>}
             </div>
+
+            <Separator />
+
+            <Section icon={<Briefcase className="h-5 w-5" />} title="Experience">
+                {candidateData?.experiences && candidateData.experiences.length > 0 ? (
+                    <div className="space-y-4">
+                        {candidateData.experiences.map((exp, i) => (
+                            <div key={i}>
+                                <h4 className="font-semibold">{exp.title}</h4>
+                                <p className="text-sm text-muted-foreground">{exp.company}</p>
+                                <p className="text-xs text-muted-foreground">{exp.startDate} - {exp.endDate || 'Present'}</p>
+                                <p className="text-sm mt-1">{exp.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : <p className="text-foreground/60 italic">Add work experience in edit mode.</p>}
+            </Section>
+
+            <Separator />
+            
+            <Section icon={<Star className="h-5 w-5" />} title="Projects">
+                 {candidateData?.projects && candidateData.projects.length > 0 ? (
+                    <div className="space-y-4">
+                        {candidateData.projects.map((proj, i) => (
+                            <div key={i}>
+                                <a href={proj.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">{proj.title}</a>
+                                <p className="text-sm mt-1">{proj.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : <p className="text-foreground/60 italic">Add projects in edit mode.</p>}
+            </Section>
+            
+            <Separator />
+
+            <Section icon={<Trophy className="h-5 w-5" />} title="Achievements">
+                {candidateData?.achievements && candidateData.achievements.length > 0 ? (
+                    <ul className="list-disc list-inside space-y-2">
+                        {candidateData.achievements.map((ach, i) => (
+                           <li key={i}>
+                               <span className="font-semibold">{ach.title}</span>
+                               {ach.description && <p className="text-sm text-muted-foreground">{ach.description}</p>}
+                           </li>
+                        ))}
+                    </ul>
+                ) : <p className="text-foreground/60 italic">Add achievements in edit mode.</p>}
+            </Section>
+
+            <Separator />
             
              <div>
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2"><MapPin className="h-4 w-4" /> Location Preferences</h3>
@@ -97,6 +147,13 @@ const ViewRecruiterProfile = ({ profileData }: { profileData: UserType }) => {
         </div>
     );
 };
+
+const Section = ({ icon, title, children }: { icon: React.ReactNode, title: string, children: React.ReactNode }) => (
+    <div>
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-3 mb-3">{icon}{title}</h3>
+        {children}
+    </div>
+);
 
 
 const InfoSection = ({ icon, label, value, isLink = false }: { icon?: React.ReactNode, label: string, value?: string, isLink?: boolean }) => (
