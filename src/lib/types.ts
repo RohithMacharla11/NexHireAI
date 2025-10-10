@@ -1,1 +1,12 @@
-// We will add our types here as we build the application.
+
+export type Role = 'candidate' | 'recruiter';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  avatarUrl?: string;
+}
+
+    

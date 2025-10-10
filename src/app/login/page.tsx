@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -9,6 +10,10 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Chrome, Briefcase, User, ArrowLeft, Mail, KeyRound, UserCircle } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import type { Role } from '@/lib/types';
 
 export default function AuthPage() {
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -107,9 +112,36 @@ const AuthCard = ({ children }: { children: React.ReactNode }) => (
 );
 
 function LoginForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => void }) {
+    const { login } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setIsLoading(true);
+        const formData = new FormData(event.currentTarget);
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+
+        try {
+            await login(email, password);
+            toast({ title: "Login Successful", description: "Welcome back!" });
+            router.push('/');
+        } catch (error) {
+            toast({
+                title: "Login Failed",
+                description: (error as Error).message,
+                variant: "destructive"
+            });
+            setIsLoading(false);
+        }
+    };
+    
     return (
       <AnimatePresence>
-        <motion.div
+        <motion.form
+            onSubmit={handleSubmit}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -124,8 +156,8 @@ function LoginForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => v
             </div>
             
             <div className="grid gap-6">
-              <AuthInput id="email" type="email" placeholder="m@example.com" icon={<Mail className="h-4 w-4" />} />
-              <AuthInput id="password" type="password" placeholder="Password" icon={<KeyRound className="h-4 w-4" />} />
+              <AuthInput id="email" name="email" type="email" placeholder="m@example.com" icon={<Mail className="h-4 w-4" />} required />
+              <AuthInput id="password" name="password" type="password" placeholder="Password" icon={<KeyRound className="h-4 w-4" />} required />
             </div>
 
             <div className="mt-4 text-right">
@@ -135,8 +167,8 @@ function LoginForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => v
             </div>
 
             <div className="mt-8 space-y-4">
-                <AuthButton>Login</AuthButton>
-                <AuthButton variant="outline">
+                <AuthButton type="submit" disabled={isLoading}>{isLoading ? 'Logging in...' : 'Login'}</AuthButton>
+                <AuthButton variant="outline" type="button" disabled={isLoading}>
                     <Chrome className="mr-2 h-4 w-4" />
                     Login with Google
                 </AuthButton>
@@ -144,19 +176,49 @@ function LoginForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => v
             
             <div className="mt-auto text-center text-sm text-muted-foreground">
                 Don&apos;t have an account?{' '}
-                <button onClick={() => setIsLoginMode(false)} className="underline font-semibold text-primary hover:text-primary/80 transition-colors">
+                <button type="button" onClick={() => setIsLoginMode(false)} className="underline font-semibold text-primary hover:text-primary/80 transition-colors">
                     Sign up
                 </button>
             </div>
-        </motion.div>
+        </motion.form>
       </AnimatePresence>
     );
 }
   
 function SignupForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => void }) {
+    const { signup } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setIsLoading(true);
+        const formData = new FormData(event.currentTarget);
+        const name = formData.get('name') as string;
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+        const role = formData.get('role') as Role;
+
+        try {
+            await signup({ name, email, password, role });
+            toast({ title: "Signup Successful", description: "Welcome! You can now log in." });
+            setIsLoginMode(true);
+        } catch (error) {
+            toast({
+                title: "Signup Failed",
+                description: (error as Error).message,
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
     return (
         <AnimatePresence>
-          <motion.div
+          <motion.form
+            onSubmit={handleSubmit}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -170,13 +232,13 @@ function SignupForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => 
               </p>
             </div>
             <div className="grid gap-4">
-                <AuthInput id="name" placeholder="John Doe" icon={<UserCircle className="h-4 w-4" />} />
-                <AuthInput id="email" type="email" placeholder="m@example.com" icon={<Mail className="h-4 w-4" />} />
-                <AuthInput id="password" type="password" placeholder="Password" icon={<KeyRound className="h-4 w-4" />} />
+                <AuthInput id="name" name="name" placeholder="John Doe" icon={<UserCircle className="h-4 w-4" />} required />
+                <AuthInput id="email" name="email" type="email" placeholder="m@example.com" icon={<Mail className="h-4 w-4" />} required />
+                <AuthInput id="password" name="password" type="password" placeholder="Password" icon={<KeyRound className="h-4 w-4" />} required />
                 
                 <div className="grid gap-2 pt-2">
                   <Label className="text-muted-foreground text-sm">What best describes you?</Label>
-                  <RadioGroup defaultValue="candidate" className="grid grid-cols-2 gap-4">
+                  <RadioGroup defaultValue="candidate" name="role" className="grid grid-cols-2 gap-4">
                     <RoleOption value="candidate" icon={<User className="h-6 w-6" />} label="Candidate" />
                     <RoleOption value="recruiter" icon={<Briefcase className="h-6 w-6" />} label="Recruiter" />
                   </RadioGroup>
@@ -184,8 +246,8 @@ function SignupForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => 
             </div>
 
             <div className="mt-6 space-y-3">
-                <AuthButton>Create an account</AuthButton>
-                <AuthButton variant="outline">
+                <AuthButton type="submit" disabled={isLoading}>{isLoading ? 'Creating account...' : 'Create an account'}</AuthButton>
+                <AuthButton variant="outline" type="button" disabled={isLoading}>
                     <Chrome className="mr-2 h-4 w-4" />
                     Sign up with Google
                 </AuthButton>
@@ -193,28 +255,29 @@ function SignupForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => 
             
             <div className="mt-auto text-center text-sm text-muted-foreground">
               Already have an account?{' '}
-              <button onClick={() => setIsLoginMode(true)} className="underline font-semibold text-primary hover:text-primary/80 transition-colors">
+              <button type="button" onClick={() => setIsLoginMode(true)} className="underline font-semibold text-primary hover:text-primary/80 transition-colors">
                 Login
               </button>
             </div>
-          </motion.div>
+          </motion.form>
         </AnimatePresence>
     );
 }
 
-const AuthInput = ({ id, type = 'text', placeholder, icon }: { id: string; type?: string; placeholder: string; icon: React.ReactNode }) => (
+const AuthInput = ({ id, name, type = 'text', placeholder, icon, required = false }: { id: string; name: string; type?: string; placeholder: string; icon: React.ReactNode; required?: boolean; }) => (
     <div className="relative">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
         {icon}
       </div>
-      <Input id={id} type={type} placeholder={placeholder} required className="pl-10 h-12 bg-background/50 dark:bg-black/20 border-border dark:border-white/20 focus:bg-background/80 dark:focus:bg-black/30 transition-shadow duration-300 focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_15px_rgba(var(--accent-rgb),0.5)]" />
+      <Input id={id} name={name} type={type} placeholder={placeholder} required={required} className="pl-10 h-12 bg-background/50 dark:bg-black/20 border-border dark:border-white/20 focus:bg-background/80 dark:focus:bg-black/30 transition-shadow duration-300 focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_15px_rgba(var(--accent-rgb),0.5)]" />
     </div>
 );
 
-const AuthButton = ({ children, variant = 'default' }: { children: React.ReactNode, variant?: "default" | "outline" }) => (
-    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+const AuthButton = ({ children, variant = 'default', type, disabled }: { children: React.ReactNode, variant?: "default" | "outline", type?: "submit" | "button", disabled?: boolean }) => (
+    <motion.div whileHover={{ scale: disabled ? 1 : 1.02 }} whileTap={{ scale: disabled ? 1 : 0.98 }}>
         <Button 
-            type="submit" 
+            type={type}
+            disabled={disabled}
             className="w-full h-12 text-base transition-shadow duration-300 hover:shadow-primary/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.4)]"
             variant={variant}
         >
@@ -235,3 +298,5 @@ const RoleOption = ({ value, icon, label }: { value: string; icon: React.ReactNo
       </Label>
     </motion.div>
 );
+
+    
