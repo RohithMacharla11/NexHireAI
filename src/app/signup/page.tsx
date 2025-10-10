@@ -1,7 +1,7 @@
+
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,22 +14,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 
 export default function SignupPage() {
-  const router = useRouter();
-  const { signup } = useAuth();
+  const { signup, loading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<UserRole>('candidate');
 
-  const handleSignup = async () => {
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!displayName) {
+      toast({
+        variant: 'destructive',
+        title: 'Signup Failed',
+        description: 'Please enter your full name.',
+      });
+      return;
+    }
     try {
       await signup(email, password, displayName, role);
       toast({
         title: "Signup Successful",
-        description: "Welcome to NexHireAI!",
+        description: "Welcome to NexHireAI! Redirecting...",
       });
-      router.push('/dashboard');
+       // Redirection is now handled in AuthProvider/AuthLayout
     } catch (error: any) {
       console.error("Signup failed:", error);
       toast({
@@ -49,38 +57,40 @@ export default function SignupPage() {
           <CardDescription>Join NexHireAI and land your dream job.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Full Name</Label>
-              <Input id="displayName" type="text" placeholder="John Doe" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          <form onSubmit={handleSignup}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Full Name</Label>
+                <Input id="displayName" type="text" placeholder="John Doe" value={displayName} onChange={(e) => setDisplayName(e.target.value)} disabled={loading} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="user@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={(value) => setRole(value as UserRole)} disabled={loading}>
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="candidate">Candidate</SelectItem>
+                    <SelectItem value="recruiter">Recruiter</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="user@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div className="mt-6">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creating Account...' : 'Sign Up'}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="candidate">Candidate</SelectItem>
-                  <SelectItem value="recruiter">Recruiter</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="mt-6">
-            <Button onClick={handleSignup} className="w-full">
-              Sign Up
-            </Button>
-          </div>
+          </form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/" className="underline">
