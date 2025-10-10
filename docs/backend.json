@@ -5,173 +5,103 @@
       "description": "Represents a user's basic profile information.",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "The user's full name."
-        },
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "The user's email address (read-only)."
-        },
-        "role": {
-          "type": "string",
-          "enum": [
-            "candidate",
-            "recruiter"
-          ],
-          "description": "The user's role in the application."
-        },
-        "avatarUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL for the user's avatar image."
-        }
+        "name": { "type": "string", "description": "The user's full name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address (read-only)." },
+        "role": { "type": "string", "enum": ["candidate", "recruiter"], "description": "The user's role in the application." },
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL for the user's avatar image." },
+        "linkedinUrl": { "type": "string", "format": "uri" },
+        "githubUrl": { "type": "string", "format": "uri" },
+        "portfolioUrl": { "type": "string", "format": "uri" },
+        "resumeUrl": { "type": "string", "format": "uri" },
+        "analysis": { "$ref": "#/backend/entities/Analysis" },
+        "candidateSpecific": { "$ref": "#/backend/entities/CandidateProfile" },
+        "recruiterSpecific": { "$ref": "#/backend/entities/RecruiterProfile" }
       },
-      "required": [
-        "name",
-        "email",
-        "role"
-      ]
+      "required": ["name", "email", "role"]
     },
     "CandidateProfile": {
       "title": "Candidate Profile",
-      "description": "Extends UserProfile with details specific to a candidate.",
+      "description": "Details specific to a candidate user.",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "role": {
-          "type": "string",
-          "enum": [
-            "candidate"
-          ]
-        },
-        "avatarUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "college": {
-          "type": "string",
-          "description": "Name of the candidate's college or university."
-        },
-        "company": {
-          "type": "string",
-          "description": "Current company or internship (optional)."
-        },
-        "skills": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of the candidate's skills."
-        },
-        "experienceLevel": {
-          "type": "string",
-          "enum": [
-            "Fresher",
-            "Intermediate",
-            "Experienced"
-          ],
-          "description": "The candidate's experience level."
-        },
-        "bio": {
-          "type": "string",
-          "description": "A short description or bio."
-        },
-        "linkedin": {
-          "type": "string",
-          "format": "uri",
-          "description": "Link to the candidate's LinkedIn profile."
-        },
-        "github": {
-          "type": "string",
-          "format": "uri",
-          "description": "Link to the candidate's Portfolio or GitHub profile."
-        }
-      },
-      "required": [
-        "name",
-        "email",
-        "role"
-      ]
+        "collegeOrUniversity": { "type": "string" },
+        "currentCompanyOrInternship": { "type": "string" },
+        "experienceLevel": { "type": "string", "enum": ["Fresher", "Intermediate", "Experienced"] },
+        "yearsOfExperience": { "type": "number" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "bio": { "type": "string" },
+        "locationPreferences": { "type": "array", "items": { "type": "string" } }
+      }
     },
     "RecruiterProfile": {
       "title": "Recruiter Profile",
-      "description": "Extends UserProfile with details specific to a recruiter.",
+      "description": "Details specific to a recruiter user.",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "role": {
-          "type": "string",
-          "enum": [
-            "recruiter"
-          ]
-        },
-        "avatarUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "mobile": {
-          "type": "string",
-          "description": "Recruiter's mobile number."
-        },
-        "companyName": {
-          "type": "string",
-          "description": "Name of the recruiter's company."
-        },
-        "designation": {
-          "type": "string",
-          "description": "Recruiter's role or designation."
-        },
-        "companyWebsite": {
-          "type": "string",
-          "format": "uri",
-          "description": "The company's official website."
-        },
-        "yearsOfExperience": {
-          "type": "number",
-          "description": "Recruiter's years of experience."
-        },
-        "hiringFocus": {
-          "type": "string",
-          "description": "Areas of hiring focus, e.g., AI Engineers."
-        },
-        "linkedin": {
-          "type": "string",
-          "format": "uri",
-          "description": "Link to the recruiter's LinkedIn profile."
+        "mobileNumber": { "type": "string" },
+        "companyName": { "type": "string" },
+        "designation": { "type": "string" },
+        "companyWebsite": { "type": "string", "format": "uri" },
+        "yearsOfExperience": { "type": "number" },
+        "hiringFocus": { "type": "array", "items": { "type": "string" } },
+        "locationPreferences": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    },
+    "Analysis": {
+      "title": "Profile Analysis",
+      "description": "Stores the results of resume and profile analysis.",
+      "type": "object",
+      "properties": {
+        "summary": { "$ref": "#/backend/entities/AnalysisSummary" }
+      }
+    },
+    "AnalysisSummary": {
+        "title": "Analysis Summary",
+        "description": "A summary of the profile analysis.",
+        "type": "object",
+        "properties": {
+            "topRoles": { 
+                "type": "array", 
+                "items": { 
+                    "type": "object",
+                    "properties": {
+                        "role": { "type": "string" },
+                        "score": { "type": "number" }
+                    }
+                } 
+            },
+            "readinessScore": { "type": "number" },
+            "gapAnalysis": { "type": "array", "items": { "type": "string" } },
+            "suggestedLearning": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "task": { "type": "string" },
+                        "estWeeks": { "type": "number" }
+                    }
+                }
+            },
+            "resumeHealth": {
+              "type": "object",
+              "properties": {
+                "contact": { "type": "boolean" },
+                "projects": { "type": "boolean" },
+                "skills": { "type": "boolean" },
+                "keywords": { "type": "boolean" }
+              }
+            }
         }
-      },
-      "required": [
-        "name",
-        "email",
-        "role"
-      ]
     }
   },
   "auth": {
-    "providers": [
-      "password"
-    ]
+    "providers": ["password"]
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserProfile"
-      },
-      "description": "Stores user profile information, keyed by user ID. The document can be a CandidateProfile or a RecruiterProfile based on the 'role' field."
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Stores user profile information, keyed by user ID."
     }
   }
 }
