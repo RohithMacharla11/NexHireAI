@@ -221,26 +221,26 @@ function SignupForm({ setIsLoginMode }: { setIsLoginMode: (isLogin: boolean) => 
             <div className="grid gap-2">
               <Label>What best describes you?</Label>
               <RadioGroup defaultValue="candidate" className="grid grid-cols-2 gap-4 pt-1">
-                <div>
+                <motion.div whileTap={{ scale: 0.95 }}>
                   <RadioGroupItem value="candidate" id="candidate" className="peer sr-only" />
                   <Label
                     htmlFor="candidate"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    className="flex h-full cursor-pointer flex-col items-center justify-between rounded-lg border-2 border-border bg-popover p-4 shadow-md transition-all hover:bg-accent/50 hover:shadow-lg peer-data-[state=checked]:border-primary peer-data-[state=checked]:shadow-primary/20 peer-data-[state=checked]:shadow-md"
                   >
-                    <User className="mb-3 h-6 w-6" />
+                    <User className="mb-3 h-6 w-6 text-primary" />
                     Candidate
                   </Label>
-                </div>
-                <div>
+                </motion.div>
+                <motion.div whileTap={{ scale: 0.95 }}>
                   <RadioGroupItem value="recruiter" id="recruiter" className="peer sr-only" />
                   <Label
                     htmlFor="recruiter"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    className="flex h-full cursor-pointer flex-col items-center justify-between rounded-lg border-2 border-border bg-popover p-4 shadow-md transition-all hover:bg-accent/50 hover:shadow-lg peer-data-[state=checked]:border-primary peer-data-[state=checked]:shadow-primary/20 peer-data-[state=checked]:shadow-md"
                   >
-                    <Briefcase className="mb-3 h-6 w-6" />
+                    <Briefcase className="mb-3 h-6 w-6 text-primary" />
                     Recruiter
                   </Label>
-                </div>
+                </motion.div>
               </RadioGroup>
             </div>
           <Button type="submit" className="w-full">
