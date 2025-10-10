@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -8,26 +9,18 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import type { User, Role } from '@/lib/types';
 import type { SignupData } from '@/lib/auth';
-
-// Mock Data
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Rohith Macharla',
-    email: 'macharlarohith111@gmail.com',
-    role: 'candidate',
-    avatarUrl: 'https://picsum.photos/seed/1/200',
-  },
-  {
-    id: '2',
-    name: 'Admin User',
-    email: 'macharlarohith45@gmail.com',
-    role: 'recruiter',
-    avatarUrl: 'https://picsum.photos/seed/2/200',
-  },
-];
+import { initializeFirebase } from '@/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -43,59 +36,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { auth, firestore } = initializeFirebase();
 
   useEffect(() => {
-    // Simulate checking for a logged-in user from a previous session
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+        } else {
+          // Handle case where user exists in Auth but not Firestore
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth, firestore]);
 
   const login = async (email: string, password: string) => {
-    // In a real app, you'd also check the password.
-    // For this mock, we'll just find the user by email.
-    const foundUser = mockUsers.find((u) => u.email === email);
-    if (foundUser) {
-      // Add password check for the provided credentials
-      if (email === 'macharlarohith111@gmail.com' && password === 'Rohith@999r') {
-         setUser(foundUser);
-         sessionStorage.setItem('user', JSON.stringify(foundUser));
-         return;
-      }
-      if (email === 'macharlarohith45@gmail.com' && password === 'Rohith@999r') {
-        setUser(foundUser);
-        sessionStorage.setItem('user', JSON.stringify(foundUser));
-        return;
-      }
-    }
-    throw new Error('Invalid email or password');
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
   const signup = async (signupData: SignupData) => {
-    const { email, name, role } = signupData;
-    // Check if user already exists
-    if (mockUsers.find((u) => u.email === email)) {
-      throw new Error('An account with this email already exists.');
-    }
-    // Create new mock user
-    const newUser: User = {
-      id: String(mockUsers.length + 1),
+    const { name, email, password, role } = signupData;
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+    const firebaseUser = userCredential.user;
+
+    const userProfile: Omit<User, 'id'> = {
       name,
       email,
       role,
-      avatarUrl: `https://picsum.photos/seed/${mockUsers.length + 1}/200`,
+      avatarUrl: `https://picsum.photos/seed/${firebaseUser.uid}/200`,
     };
-    mockUsers.push(newUser);
-    // For this mock, we don't auto-login on signup.
-    // The user will be redirected to the login form.
-    return;
+
+    const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+    await setDoc(userDocRef, userProfile);
+    
+    // Don't auto-login, let them go to the login page.
+    await signOut(auth);
   };
 
   const logout = async () => {
-    setUser(null);
-    sessionStorage.removeItem('user');
+    await signOut(auth);
     router.push('/');
   };
 
