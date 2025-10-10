@@ -72,7 +72,7 @@ const analyzeResumeFlow = ai.defineFlow(
     outputSchema: AnalysisSummarySchema,
   },
   async (input) => {
-    const { output } = await prompt.run(input);
+    const { output } = await prompt(input);
     if (!output) {
       throw new Error("Analysis failed to produce an output.");
     }
