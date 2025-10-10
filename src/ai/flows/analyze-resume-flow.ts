@@ -40,44 +40,33 @@ const AnalysisSummarySchema = z.object({
 
 
 export async function analyzeResume(input: { skills: string[], bio: string, experienceLevel: ExperienceLevel }): Promise<AnalysisSummary> {
-  return analyzeResumeFlow(input);
-}
+  const { output } = await ai.generate({
+    model: googleAI.model('gemini-pro'),
+    prompt: `You are a helpful career coach and resume analysis expert.
+    Based on the provided skills, bio, and experience level, perform a detailed analysis.
 
-const prompt = ai.definePrompt({
-  name: 'analyzeResumePrompt',
-  model: googleAI.model('gemini-pro'),
-  input: { schema: AnalyzeResumeInputSchema },
-  output: { schema: AnalysisSummarySchema, format: 'json' },
-  prompt: `You are a helpful career coach and resume analysis expert.
-  Based on the provided skills, bio, and experience level, perform a detailed analysis.
+    Candidate Information:
+    - Experience Level: ${input.experienceLevel}
+    - Skills: ${input.skills.join(', ')}
+    - Bio: ${input.bio}
 
-  Candidate Information:
-  - Experience Level: {{{experienceLevel}}}
-  - Skills: {{{skills}}}
-  - Bio: {{{bio}}}
-
-  Your task is to generate a concise analysis.
-  - Recommend the top 3 job roles that best match the candidate's profile. Provide a match score for each.
-  - Calculate an overall "readinessScore" from 0-100.
-  - Identify the top 3 gaps in their skillset for their most likely career path (gapAnalysis).
-  - Suggest 2-3 actionable learning tasks to fill those gaps, including an estimated time in weeks.
-  - Provide a basic resume health check (assume contact info and skills are present if bio and skills are provided, but check if project work is mentioned).
-  
-  Provide the output in the specified JSON format.
-  `,
-});
-
-const analyzeResumeFlow = ai.defineFlow(
-  {
-    name: 'analyzeResumeFlow',
-    inputSchema: AnalyzeResumeInputSchema,
-    outputSchema: AnalysisSummarySchema,
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    if (!output) {
-      throw new Error("Analysis failed to produce an output.");
+    Your task is to generate a concise analysis.
+    - Recommend the top 3 job roles that best match the candidate's profile. Provide a match score for each.
+    - Calculate an overall "readinessScore" from 0-100.
+    - Identify the top 3 gaps in their skillset for their most likely career path (gapAnalysis).
+    - Suggest 2-3 actionable learning tasks to fill those gaps, including an estimated time in weeks.
+    - Provide a basic resume health check (assume contact info and skills are present if bio and skills are provided, but check if project work is mentioned).
+    
+    Provide the output in JSON format.
+    `,
+    output: {
+      format: 'json',
+      schema: AnalysisSummarySchema,
     }
-    return output;
+  });
+
+  if (!output) {
+    throw new Error("Analysis failed to produce an output.");
   }
-);
+  return output;
+}
