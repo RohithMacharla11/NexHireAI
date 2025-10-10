@@ -25,13 +25,10 @@ export default function RootLayout({
       <body
         className={cn(
           fontBody.variable,
-          'font-body antialiased'
+          'font-body antialiased bg-background text-foreground'
         )}
       >
-        <div className="relative min-h-screen w-full">
-           <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.2),rgba(255,255,255,0))]"></div>
-          {children}
-        </div>
+        {children}
         <Toaster />
       </body>
     </html>
