@@ -81,8 +81,12 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
-              <Button variant="ghost" onClick={() => setIsLoggedIn(true)}>Login</Button>
-              <Button>Sign Up</Button>
+              <Button asChild variant="ghost">
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
             </div>
           )}
         </div>
