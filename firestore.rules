@@ -1,0 +1,134 @@
+/**
+ * @fileoverview Firestore Security Rules for NexHireAI platform.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for all data. Each user has complete control over their own data tree.
+ *
+ * Data Structure:
+ * All data is nested under /users/{userId}, ensuring that only the authenticated user can access their data. This includes assessments, questions, submissions, and learning roadmaps.
+ *
+ * Key Security Decisions:
+ * - User listing is implicitly denied by the rules structure.
+ * - No admin roles are defined within the database itself. Any admin functionality should be implemented outside of Firestore Security Rules.
+ * - Data validation is relaxed during the prototyping phase to allow for rapid schema iteration.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Secure user profiles. Only the authenticated user can access their own profile.
+     * @path /users/{userId}
+     * @allow (create) - User with UID 'user123' can create their profile at /users/user123 if request.auth.uid == 'user123'
+     * @allow (get, update, delete) - User with UID 'user123' can get, update, and delete their profile at /users/user123 if request.auth.uid == 'user123'
+     * @deny (create) - User with UID 'user456' cannot create a profile at /users/user123.
+     * @deny (get, update, delete) - User with UID 'user456' cannot get, update, or delete the profile at /users/user123.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing users is not permitted.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secure assessments. Only the user can access their own assessments.
+     * @path /users/{userId}/assessments/{assessmentId}
+     * @allow (create) - User with UID 'user123' can create an assessment under /users/user123/assessments/assessment001.
+     * @allow (get, update, delete) - User with UID 'user123' can get, update, and delete their assessment under /users/user123/assessments/assessment001.
+     * @deny (create) - User with UID 'user456' cannot create an assessment under /users/user123/assessments/assessment001.
+     * @deny (get, update, delete) - User with UID 'user456' cannot get, update, or delete the assessment under /users/user123/assessments/assessment001.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/assessments/{assessmentId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secure questions within assessments. Only the user can access questions in their assessments.
+     * @path /users/{userId}/assessments/{assessmentId}/questions/{questionId}
+     * @allow (create) - User with UID 'user123' can create a question under /users/user123/assessments/assessment001/questions/question001.
+     * @allow (get, update, delete) - User with UID 'user123' can get, update, and delete a question under /users/user123/assessments/assessment001/questions/question001.
+     * @deny (create) - User with UID 'user456' cannot create a question under /users/user123/assessments/assessment001/questions/question001.
+     * @deny (get, update, delete) - User with UID 'user456' cannot get, update, or delete a question under /users/user123/assessments/assessment001/questions/question001.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/assessments/{assessmentId}/questions/{questionId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secure submissions. Only the user can access their own submissions.
+     * @path /users/{userId}/submissions/{submissionId}
+     * @allow (create) - User with UID 'user123' can create a submission under /users/user123/submissions/submission001.
+     * @allow (get, update, delete) - User with UID 'user123' can get, update, and delete their submission under /users/user123/submissions/submission001.
+     * @deny (create) - User with UID 'user456' cannot create a submission under /users/user123/submissions/submission001.
+     * @deny (get, update, delete) - User with UID 'user456' cannot get, update, or delete the submission under /users/user123/submissions/submission001.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/submissions/{submissionId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secure learning roadmaps. Only the user can access their own learning roadmap.
+     * @path /users/{userId}/learningRoadmaps/{learningRoadmapId}
+     * @allow (create) - User with UID 'user123' can create a learning roadmap under /users/user123/learningRoadmaps/roadmap001.
+     * @allow (get, update, delete) - User with UID 'user123' can get, update, and delete their learning roadmap under /users/user123/learningRoadmaps/roadmap001.
+     * @deny (create) - User with UID 'user456' cannot create a learning roadmap under /users/user123/learningRoadmaps/roadmap001.
+     * @deny (get, update, delete) - User with UID 'user456' cannot get, update, or delete the learning roadmap under /users/user123/learningRoadmaps/roadmap001.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/learningRoadmaps/{learningRoadmapId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
