@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,19 +14,26 @@ import { useToast } from '@/hooks/use-toast';
 
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
+
 
   const handleLogin = async () => {
     try {
       await login(email, password);
       toast({
         title: "Login Successful",
-        description: "Welcome back!",
+        description: "Redirecting to your dashboard...",
       });
-      // The redirect is now handled by the AuthProvider
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
@@ -36,6 +43,14 @@ export default function LoginPage() {
       });
     }
   };
+
+  if (loading || (!loading && user)) {
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4">

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { UserRole, AppUser } from '@/lib/types';
 import {
   useFirebase,
@@ -32,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
   const { auth, firestore } = useFirebase();
   const { user: firebaseUser, isUserLoading: isFirebaseUserLoading } = useFirebaseUser();
 
@@ -48,16 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDocRef = doc(firestore, 'users', firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
           if (userDoc.exists()) {
+            const userData = userDoc.data();
             setUser({
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
-              name: userDoc.data().displayName || firebaseUser.displayName || 'No Name',
-              role: userDoc.data().role as UserRole,
+              name: userData.displayName || firebaseUser.displayName || 'No Name',
+              role: userData.role as UserRole,
+              xp: userData.xp,
               avatarUrl: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
             });
           } else {
-            // This can happen if the doc creation is pending or failed.
-            // Log out the user to force a clean state.
+             // This can happen if the doc creation is pending or failed.
             await signOut(auth);
             setUser(null);
           }
@@ -76,25 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     syncUser();
   }, [firebaseUser, firestore, isFirebaseUserLoading, auth]);
 
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const isAuthPage = pathname === '/' || pathname === '/signup';
-    
-    if (user && isAuthPage) {
-      router.push('/dashboard');
-    } else if (!user && !isAuthPage) {
-      router.push('/');
-    }
-
-  }, [user, loading, pathname, router]);
 
   const login = useCallback(async (email: string, password: string) => {
     if (!auth) throw new Error("Auth service not available");
     await signInWithEmailAndPassword(auth, email, password);
-    // State change will be handled by the useEffect hooks
+    // Auth state change is now handled by the main useEffect
   }, [auth]);
 
   const signup = useCallback(
@@ -124,16 +110,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         xp: 0,
         badges: [],
       };
-
-      // Use a non-blocking write with proper error handling
-      setDoc(userDocRef, userData).catch(serverError => {
+      
+      await setDoc(userDocRef, userData).catch(serverError => {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'create',
           requestResourceData: userData,
         });
         errorEmitter.emit('permission-error', permissionError);
-        // Re-throwing is important for the calling function to catch it
         throw permissionError;
       });
     },
@@ -143,19 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     if (!auth) return;
     await signOut(auth);
-    setUser(null);
+    setUser(null); // Clear local user state
     router.push('/');
   }, [auth, router]);
 
   const value = { user, login, signup, logout, loading };
-  
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
   
   return (
     <AuthContext.Provider value={value}>
