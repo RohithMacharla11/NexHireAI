@@ -126,13 +126,13 @@ export default function ProfilePage() {
     let newDirection = rotation.direction;
     
     if (newView === 'edit') {
-        newDirection = -1; // Flip left
-        newY = rotation.y + 180 * newDirection;
+        newDirection = 1; // Flip left
+        newY = rotation.y - 180 * newDirection;
     } else if (newView === 'analysis') {
-        newDirection = 1; // Flip right
-        newY = rotation.y + 180 * newDirection;
+        newDirection = -1; // Flip right
+        newY = rotation.y - 180 * newDirection;
     } else { // Back to profile
-        newY = (rotation.y % 360 === 0) ? rotation.y + 180 * rotation.direction : Math.round(rotation.y / 360) * 360;
+        newY = (rotation.y % 360 === 0) ? rotation.y - 180 * rotation.direction : Math.round(rotation.y / 360) * 360;
     }
 
     setRotation({ y: newY, direction: newDirection });
@@ -193,11 +193,13 @@ export default function ProfilePage() {
                             transition={{ duration: 0.3, delay: 0.35 }}
                         >
                             <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
-                            <EditProfileForm 
-                                profileData={profileData} 
-                                onSave={handleProfileUpdate} 
-                                onCancel={() => changeView('profile')} 
-                            />
+                            <div className="max-h-[75vh] overflow-y-auto pr-4">
+                                <EditProfileForm 
+                                    profileData={profileData} 
+                                    onSave={handleProfileUpdate} 
+                                    onCancel={() => changeView('profile')} 
+                                />
+                            </div>
                         </motion.div>
                     )}
                     </AnimatePresence>
