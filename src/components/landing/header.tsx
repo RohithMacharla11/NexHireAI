@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '../theme-toggle';
 import { useAuth } from '@/hooks/use-auth.tsx';
 import { Skeleton } from '../ui/skeleton';
+import { User } from 'lucide-react';
 
 export function Header() {
   const { user, isLoading, logout } = useAuth();
@@ -58,6 +59,7 @@ export function Header() {
           </Link>
         </nav>
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           {isLoading ? (
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-20" />
@@ -69,7 +71,7 @@ export function Header() {
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
-                    <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -83,6 +85,10 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
                   Log out
                 </DropdownMenuItem>
@@ -90,7 +96,6 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
-              <ThemeToggle />
               <Button asChild variant="ghost">
                 <Link href="/login">Login</Link>
               </Button>
@@ -104,5 +109,3 @@ export function Header() {
     </motion.header>
   );
 }
-
-    

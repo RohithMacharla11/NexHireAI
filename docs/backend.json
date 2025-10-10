@@ -2,7 +2,7 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "Represents a user's profile information.",
+      "description": "Represents a user's basic profile information.",
       "type": "object",
       "properties": {
         "name": {
@@ -12,31 +12,166 @@
         "email": {
           "type": "string",
           "format": "email",
-          "description": "The user's email address."
+          "description": "The user's email address (read-only)."
         },
         "role": {
           "type": "string",
-          "enum": ["candidate", "recruiter"],
+          "enum": [
+            "candidate",
+            "recruiter"
+          ],
           "description": "The user's role in the application."
         },
         "avatarUrl": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL for the user's avatar image."
+          "type": "string",
+          "format": "uri",
+          "description": "URL for the user's avatar image."
         }
       },
-      "required": ["name", "email", "role"]
+      "required": [
+        "name",
+        "email",
+        "role"
+      ]
+    },
+    "CandidateProfile": {
+      "title": "Candidate Profile",
+      "description": "Extends UserProfile with details specific to a candidate.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "candidate"
+          ]
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "college": {
+          "type": "string",
+          "description": "Name of the candidate's college or university."
+        },
+        "company": {
+          "type": "string",
+          "description": "Current company or internship (optional)."
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of the candidate's skills."
+        },
+        "experienceLevel": {
+          "type": "string",
+          "enum": [
+            "Fresher",
+            "Intermediate",
+            "Experienced"
+          ],
+          "description": "The candidate's experience level."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short description or bio."
+        },
+        "linkedin": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to the candidate's LinkedIn profile."
+        },
+        "github": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to the candidate's Portfolio or GitHub profile."
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "role"
+      ]
+    },
+    "RecruiterProfile": {
+      "title": "Recruiter Profile",
+      "description": "Extends UserProfile with details specific to a recruiter.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "recruiter"
+          ]
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "mobile": {
+          "type": "string",
+          "description": "Recruiter's mobile number."
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Name of the recruiter's company."
+        },
+        "designation": {
+          "type": "string",
+          "description": "Recruiter's role or designation."
+        },
+        "companyWebsite": {
+          "type": "string",
+          "format": "uri",
+          "description": "The company's official website."
+        },
+        "yearsOfExperience": {
+          "type": "number",
+          "description": "Recruiter's years of experience."
+        },
+        "hiringFocus": {
+          "type": "string",
+          "description": "Areas of hiring focus, e.g., AI Engineers."
+        },
+        "linkedin": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to the recruiter's LinkedIn profile."
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "role"
+      ]
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": [
+      "password"
+    ]
   },
   "firestore": {
     "/users/{userId}": {
       "schema": {
         "$ref": "#/backend/entities/UserProfile"
       },
-      "description": "Stores user profile information, keyed by user ID."
+      "description": "Stores user profile information, keyed by user ID. The document can be a CandidateProfile or a RecruiterProfile based on the 'role' field."
     }
   }
 }
