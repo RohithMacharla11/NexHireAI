@@ -64,40 +64,44 @@ export default function ProfilePage() {
     fetchProfile();
   }, [fetchProfile]);
   
-  const handleProfileUpdate = async (updatedData: Partial<UserType>) => {
+  const handleProfileUpdate = async (formData: Partial<UserType>) => {
     if (!user || !profileData) return;
 
     const userDocRef = doc(firestore, 'users', user.id);
-    try {
-        // Deep merge nested objects like candidateSpecific
-        const newData = {
-          ...profileData,
-          ...updatedData,
-          candidateSpecific: {
-            ...profileData.candidateSpecific,
-            ...updatedData.candidateSpecific
-          },
-          recruiterSpecific: {
-            ...profileData.recruiterSpecific,
-            ...updatedData.recruiterSpecific
-          },
-          analysis: updatedData.analysis ? {
-            ...profileData.analysis,
-            ...updatedData.analysis
-          } : profileData.analysis,
-        };
+    
+    // Create a deep copy to avoid direct state mutation issues.
+    const newProfileData = JSON.parse(JSON.stringify(profileData));
 
-        setProfileData(newData as UserType);
+    // Merge the form data into the copied profile data.
+    const updatedData = {
+        ...newProfileData,
+        ...formData,
+        candidateSpecific: {
+            ...newProfileData.candidateSpecific,
+            ...formData.candidateSpecific,
+        },
+        recruiterSpecific: {
+            ...newProfileData.recruiterSpecific,
+            ...formData.recruiterSpecific,
+        },
+    };
+
+    try {
+        // Use the merged form data to set in Firestore, but only what's changed.
+        await setDoc(userDocRef, formData, { merge: true });
         
-        await setDoc(userDocRef, updatedData, { merge: true });
+        // Update the local state with the fully merged data.
+        setProfileData(updatedData);
+
         toast({ title: "Success", description: "Profile updated successfully!" });
         changeView('profile');
     } catch (error) {
         console.error("Error updating profile:", error);
-        setProfileData(profileData);
+        // No need to revert profileData as we used a copy.
         toast({ title: "Error", description: "Could not update profile.", variant: "destructive" });
     }
   };
+
 
   const runAnalysis = async () => {
       if (!profileData) return;
@@ -121,11 +125,14 @@ export default function ProfilePage() {
         toast({ title: "Analyzing Profile...", description: "This may take a moment." });
         const analysisResult: AnalysisSummary = await analyzeResume(analysisInput);
         
-        await handleProfileUpdate({
+        const updatePayload = {
             analysis: {
                 summary: analysisResult
             }
-        });
+        };
+
+        // Use the same update logic to save the analysis
+        await handleProfileUpdate(updatePayload);
         changeView('analysis');
 
       } catch(error) {
@@ -140,14 +147,16 @@ export default function ProfilePage() {
     let newY = rotation.y;
     let newDirection = rotation.direction;
     
-    if (newView === 'edit') {
-        newDirection = 1; // Flip left
-        newY = rotation.y + 180 * newDirection;
-    } else if (newView === 'analysis') {
-        newDirection = -1; // Flip right
-        newY = rotation.y + 180 * newDirection;
-    } else { // Back to profile
-        newY = (rotation.y % 360 !== 0) ? rotation.y - 180 * rotation.direction : 0;
+    if (view === 'profile' && newView === 'edit') {
+      newDirection = 1; // Flip left from profile
+      newY += 180 * newDirection;
+    } else if (view === 'edit' && newView === 'profile') {
+      newY -= 180 * newDirection; // Flip back
+    } else if (view === 'profile' && newView === 'analysis') {
+      newDirection = -1; // Flip right from profile
+      newY += 180 * newDirection;
+    } else if (view === 'analysis' && newView === 'profile') {
+      newY -= 180 * newDirection; // Flip back
     }
     
     setRotation({ y: newY, direction: newDirection });
@@ -183,6 +192,7 @@ export default function ProfilePage() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.3 }}
+                                className="w-full h-full"
                             >
                                 <ProfileCard 
                                     profileData={profileData} 
@@ -197,18 +207,18 @@ export default function ProfilePage() {
                 </div>
 
                  {/* Edit Face */}
-                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)' }}>
+                <div className="absolute w-full h-full backface-hidden max-h-full" style={{ transform: 'rotateY(180deg)' }}>
                     <AnimatePresence>
                     {view === 'edit' && (
                         <motion.div
-                            className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40"
+                            className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40 flex flex-col"
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.3, delay: 0.35 }}
                         >
-                            <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
-                            <div className="max-h-[75vh] overflow-y-auto pr-4">
+                            <h2 className="text-2xl font-bold mb-6 flex-shrink-0">Edit Profile</h2>
+                            <div className="flex-grow overflow-y-auto pr-4">
                                 <EditProfileForm 
                                     profileData={profileData} 
                                     onSave={handleProfileUpdate} 
@@ -222,13 +232,14 @@ export default function ProfilePage() {
 
 
                 {/* Analysis Face */}
-                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(180deg)' }}>
+                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)' }}>
                      <AnimatePresence>
                         {view === 'analysis' && (
                              <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
+                                className="w-full h-full"
                                 transition={{ duration: 0.3, delay: 0.35 }}
                             >
                                 <PersonalUnderstanding 
