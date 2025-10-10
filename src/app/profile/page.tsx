@@ -12,7 +12,7 @@ import { EditProfileForm } from '@/components/profile/EditProfileForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { analyzeResume } from '@/ai/flows/analyze-resume-flow';
 import { PersonalUnderstanding } from '@/components/profile/PersonalUnderstanding';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 type View = 'profile' | 'edit' | 'analysis';
 
@@ -67,31 +67,14 @@ export default function ProfilePage() {
   
   const handleProfileUpdate = async (formData: Partial<UserType>) => {
     if (!user || !profileData) return;
-
-    // Create a new object for the update to avoid stale state issues.
-    const updatedProfileData = { ...profileData };
-
-    // Deep merge properties
-    for (const key in formData) {
-      const typedKey = key as keyof UserType;
-      if (typeof formData[typedKey] === 'object' && formData[typedKey] !== null && !Array.isArray(formData[typedKey])) {
-        // @ts-ignore
-        updatedProfileData[typedKey] = {
-          // @ts-ignore
-          ...updatedProfileData[typedKey],
-          ...formData[typedKey],
-        };
-      } else {
-        // @ts-ignore
-        updatedProfileData[typedKey] = formData[typedKey];
-      }
-    }
     
     try {
         const userDocRef = doc(firestore, 'users', user.id);
+        // This is the broken save logic you wanted to revert to
         await setDoc(userDocRef, formData, { merge: true });
         
-        setProfileData(updatedProfileData);
+        // This state update is also not ideal, but it's part of the reverted state
+        setProfileData(prev => ({...prev, ...formData} as UserType));
 
         toast({ title: "Success", description: "Profile updated successfully!" });
         handleViewChange('profile');
@@ -128,11 +111,17 @@ export default function ProfilePage() {
                 summary: analysisResult
             }
         };
-
+        
+        // Use the existing (and flawed) update handler
         await handleProfileUpdate(updatePayload);
-        if (profileData?.analysis?.summary) {
-            handleViewChange('analysis', 'right');
-        }
+        
+        // Manually update state for immediate UI feedback before view change
+        setProfileData(prev => prev ? ({
+          ...prev,
+          analysis: { summary: analysisResult }
+        }) : null);
+
+        handleViewChange('analysis', 'right');
 
       } catch(error) {
          console.error("Error running analysis:", error);
@@ -140,16 +129,14 @@ export default function ProfilePage() {
       }
   }
 
-  const handleViewChange = (newView: View, direction: 'left' | 'right' | 'back' = 'back') => {
-      if (newView === 'edit') {
-          setRotation(prev => prev + 180);
-      } else if (newView === 'analysis') {
-          setRotation(prev => prev - 180);
-      } else { // 'profile'
-          // Check current rotation to flip back correctly
-          if (rotation % 360 !== 0) {
-            setRotation(0); // A simplified approach to reset
-          }
+  const handleViewChange = (newView: View, direction?: 'left' | 'right') => {
+      if (view === 'profile') {
+          if (newView === 'edit') setRotation(prev => prev + 180);
+          if (newView === 'analysis') setRotation(prev => prev - 180);
+      } else {
+          // Simplified reset logic from any other view
+          if (view === 'edit') setRotation(prev => prev - 180);
+          if (view === 'analysis') setRotation(prev => prev + 180);
       }
       setView(newView);
   }
@@ -173,7 +160,7 @@ export default function ProfilePage() {
                 transition={{ duration: 0.7, ease: 'easeInOut' }}
             >
                 {/* Profile Face */}
-                <div className="absolute w-full h-full backface-hidden">
+                <div className="absolute w-full h-full backface-hidden" style={{ display: view === 'profile' ? 'block' : 'none' }}>
                     <ProfileCard 
                       profileData={profileData} 
                       onRunAnalysis={runAnalysis}
@@ -184,20 +171,19 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Edit Face */}
-                <div className="absolute w-full h-full backface-hidden rotate-y-180">
+                <div className="absolute w-full h-full backface-hidden rotate-y-180" style={{ display: view === 'edit' ? 'block' : 'none' }}>
                      <div className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40">
-                        <div className="max-h-full overflow-y-auto pr-4">
-                            <EditProfileForm 
-                                profileData={profileData} 
-                                onSave={handleProfileUpdate} 
-                                onCancel={() => handleViewChange('profile')} 
-                            />
-                        </div>
+                        {/* This is the state with no scroll container */}
+                        <EditProfileForm 
+                            profileData={profileData} 
+                            onSave={handleProfileUpdate} 
+                            onCancel={() => handleViewChange('profile')} 
+                        />
                     </div>
                 </div>
 
                 {/* Analysis Face */}
-                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)' }}>
+                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)', display: view === 'analysis' ? 'block' : 'none' }}>
                     <PersonalUnderstanding 
                         analysis={profileData.analysis?.summary}
                         onFlip={() => handleViewChange('profile')}
