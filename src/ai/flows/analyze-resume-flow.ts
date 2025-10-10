@@ -7,11 +7,21 @@
  * - AnalyzeResumeInput - The input type for the analyzeResume function.
  * - AnalyzeResumeOutput - The return type for the analyzeResume function.
  */
-
-import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-import * as genkit from 'genkit';
+import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { z } from 'zod';
+
+
+// Initialize Genkit directly in this file
+const ai = genkit({
+  plugins: [
+    googleAI({
+      location: 'us-central1',
+      apiVersion: 'v1',
+    }),
+  ],
+});
+
 
 const AnalyzeResumeInputSchema = z.object({
   skills: z.array(z.string()).describe("A list of the candidate's skills."),
@@ -46,7 +56,7 @@ export type AnalyzeResumeOutput = z.infer<typeof AnalyzeResumeOutputSchema>;
 
 
 export async function analyzeResume(input: AnalyzeResumeInput): Promise<AnalyzeResumeOutput> {
-  const { candidates } = await genkit.generate({
+  const { candidates } = await ai.generate({
     model: googleAI.model('gemini-1.5-flash-latest'),
     prompt: `You are a helpful career coach and resume analysis expert.
     Based on the provided skills, bio, and experience level, perform a detailed analysis.
