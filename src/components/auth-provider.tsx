@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, createContext } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { UserRole, AppUser } from '@/lib/types';
 import {
   useFirebase,
@@ -14,9 +15,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  type Auth,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, type Firestore } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -28,23 +28,17 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
   const { auth, firestore } = useFirebase();
   const { user: firebaseUser, isUserLoading: isFirebaseUserLoading } = useFirebaseUser();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   useEffect(() => {
     const fetchUserRole = async () => {
       if (firebaseUser && firestore) {
+        // Still loading user data from Firestore
         setLoading(true);
         const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         try {
@@ -58,15 +52,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 avatarUrl: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
               });
             } else {
+              // This can happen briefly during signup
               setUser(null);
             }
         } catch (error) {
             console.error("Error fetching user document:", error);
             setUser(null);
         } finally {
+            // Finished loading Firestore data
             setLoading(false);
         }
       } else if (!isFirebaseUserLoading) {
+        // No firebase user and firebase auth is done loading
         setUser(null);
         setLoading(false);
       }
@@ -108,7 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         badges: [],
       };
 
-      // Non-blocking write with contextual error handling
       setDoc(userDocRef, userData).catch(serverError => {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
@@ -128,11 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/');
   }, [auth, router]);
 
-  const value = { user, login, signup, logout, loading: loading || isFirebaseUserLoading };
-
-  if (!isClient) {
-    return null;
-  }
+  const value = { user, login, signup, logout, loading };
 
   return (
     <AuthContext.Provider value={value}>
