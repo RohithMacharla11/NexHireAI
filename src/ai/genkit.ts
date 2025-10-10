@@ -1,18 +1,10 @@
-
-import { genkit, Ai } from 'genkit';
+import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
-let aiInstance: Ai;
-
-function initializeGenkit() {
-    if (!aiInstance) {
-        aiInstance = genkit({
-            plugins: [googleAI()],
-            logLevel: 'debug',
-            enableTracingAndMetrics: true,
-        });
-    }
-    return aiInstance;
-}
-
-export const ai = initializeGenkit();
+// This constant should be initialized directly.
+// The previous logic with memoization and 'use server' was causing errors.
+export const ai = genkit({
+  plugins: [googleAI()],
+  logLevel: 'debug',
+  enableTracingAndMetrics: true,
+});
