@@ -73,21 +73,39 @@ export async function analyzeResume(input: AnalyzeResumeInput): Promise<AnalyzeR
     - Suggest 2-3 actionable learning tasks to fill those gaps, including an estimated time in weeks.
     - Provide a basic resume health check (assume contact info and skills are present if bio and skills are provided, but check if project work is mentioned in the bio).
     
-    Provide the output in the required JSON format.
+    Provide the output in a valid JSON format that strictly adheres to the following TypeScript type:
+    
+    type AnalyzeResumeOutput = {
+      topRoles: Array<{ role: string; score: number; }>;
+      readinessScore: number;
+      gapAnalysis: Array<string>;
+      suggestedLearning: Array<{ task: string; estWeeks: number; }>;
+      resumeHealth: {
+        contact: boolean;
+        projects: boolean;
+        skills: boolean;
+        keywords: boolean;
+      };
+    }
+
+    Do not include any markdown or formatting characters like \`\`\`json.
     `,
-    output: {
-      format: 'json',
-      schema: AnalyzeResumeOutputSchema,
-    },
     config: {
       temperature: 0.3,
     }
   });
 
-  const analysisResult = candidates[0].output?.json;
+  const analysisResultText = candidates[0].output?.text;
 
-  if (!analysisResult) {
+  if (!analysisResultText) {
     throw new Error("Analysis failed to produce a valid result.");
   }
-  return analysisResult;
+
+  try {
+    const analysisResult = JSON.parse(analysisResultText);
+    return AnalyzeResumeOutputSchema.parse(analysisResult);
+  } catch (e) {
+    console.error("Failed to parse analysis JSON:", e);
+    throw new Error("AI returned an invalid JSON structure.");
+  }
 }
