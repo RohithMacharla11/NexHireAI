@@ -45,7 +45,7 @@ export async function analyzeResume(input: { skills: string[], bio: string, expe
 
 const prompt = ai.definePrompt({
   name: 'analyzeResumePrompt',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  model: googleAI.model('gemini-1.5-flash'),
   input: { schema: AnalyzeResumeInputSchema },
   output: { schema: AnalysisSummarySchema },
   prompt: `You are a helpful career coach and resume analysis expert.
