@@ -4,11 +4,9 @@
 import React from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
-import { AuthLayout } from '@/components/layout/auth-layout';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthLayout>
       <div className="flex min-h-screen w-full">
         <Sidebar />
         <div className="flex flex-1 flex-col">
@@ -18,6 +16,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-    </AuthLayout>
   );
 }

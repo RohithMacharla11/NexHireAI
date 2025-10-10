@@ -42,22 +42,30 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = pathname === '/' || pathname === '/signup';
 
-  // If the user is logged in and on an auth page, the useEffect will trigger a redirect.
-  // We show a loader to provide a smooth transition.
-  if (user && isAuthPage) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+  // If we are on an auth page, render the children (Login or Signup form)
+  if (isAuthPage) {
+    // If the user is logged in, the useEffect will trigger a redirect, so we can show a loader.
+    if (user) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+    // Otherwise, show the login/signup form.
+    return <>{children}</>;
   }
 
-  // If the user is NOT logged in and is trying to access a protected page,
-  // the useEffect will trigger a redirect. We render null to prevent a flash of protected content.
-  if (!user && !isAuthPage) {
-    return null;
+  // If we are on a protected page, and the user is logged in, render the children (the app)
+  if (user) {
+    return <>{children}</>;
   }
-  
-  // If all checks pass, render the requested page content.
-  return <>{children}</>;
+
+  // If we are on a protected page and the user is NOT logged in, the useEffect will redirect.
+  // We render a loader to avoid flashing the protected content.
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  );
 }

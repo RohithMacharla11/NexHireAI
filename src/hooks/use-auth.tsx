@@ -7,13 +7,11 @@ import React, {
   useCallback,
   createContext,
   useContext,
+  ReactNode,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import type { UserRole, AppUser } from '@/lib/types';
-import {
-  useFirebase,
-  useUser as useFirebaseUser,
-} from '@/firebase';
+import { useFirebase, useUser as useFirebaseUser } from '@/firebase';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -21,7 +19,6 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { useToast } from './use-toast';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -40,13 +37,11 @@ export const AuthContext = createContext<AuthContextType | undefined>(
   undefined
 );
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const { auth, firestore } = useFirebase();
   const { user: firebaseUser, isUserLoading: isFirebaseUserLoading } =
     useFirebaseUser();
-  const { toast } = useToast();
-  const router = useRouter();
 
   const [isAppUserLoading, setAppUserLoading] = useState(true);
 
@@ -65,9 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userDocRef = doc(firestore, 'users', firebaseUser.uid);
     const unsubscribe = onSnapshot(
       userDocRef,
-      (doc) => {
-        if (doc.exists()) {
-          const userData = doc.data();
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const userData = docSnapshot.data();
           setAppUser({
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
@@ -80,10 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
           });
         } else {
-          // User exists in auth but not firestore, something is wrong.
           setAppUser(null);
-          // Consider logging them out.
-          signOut(auth);
         }
         setAppUserLoading(false);
       },
@@ -95,14 +87,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => unsubscribe();
-  }, [firebaseUser, isFirebaseUserLoading, firestore, auth]);
+  }, [firebaseUser, isFirebaseUserLoading, firestore]);
 
   const login = useCallback(
     async (email: string, password: string) => {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      // The redirect is handled by the AuthLayout now.
     },
-    [auth, router]
+    [auth]
   );
 
   const signup = useCallback(
@@ -128,16 +120,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         badges: [],
       };
       await setDoc(userDocRef, userData);
-      router.push('/dashboard');
+      // The redirect is handled by the AuthLayout now.
     },
-    [auth, firestore, router]
+    [auth, firestore]
   );
 
   const logout = useCallback(async () => {
     await signOut(auth);
     setAppUser(null);
-    router.push('/');
-  }, [auth, router]);
+    // The redirect is handled by the AuthLayout now.
+  }, [auth]);
 
   const value = {
     user: appUser,

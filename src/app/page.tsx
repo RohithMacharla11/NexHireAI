@@ -10,12 +10,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const { login, loading, user } = useAuth();
+  const { login, loading } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -23,13 +21,11 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email, password);
-      // The redirection is now primarily handled by the AuthLayout,
-      // but we can still show a toast and push a navigation just in case.
+      // Redirection is handled by the AuthLayout
       toast({
         title: "Login Successful",
         description: "Redirecting to your dashboard...",
       });
-      router.push('/dashboard');
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
@@ -39,16 +35,6 @@ export default function LoginPage() {
       });
     }
   };
-  
-  // If the user is already logged in, the AuthLayout will handle the redirect.
-  // We can show a simple loading state here to prevent the form from flashing.
-  if (user) {
-    return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-         <p>Redirecting to dashboard...</p>
-       </div>
-     );
-  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4">
