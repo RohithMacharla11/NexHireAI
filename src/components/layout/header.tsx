@@ -1,6 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
+import React from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Logo } from "../logo";
 import { cn } from "@/lib/utils";
+import type { AppUser } from "@/lib/types";
 
 const navItems = {
   all: [
@@ -54,13 +57,23 @@ const navItems = {
   ],
 };
 
+const mockUser: AppUser = {
+  id: 'mock-user',
+  name: 'Admin User',
+  email: 'admin@example.com',
+  role: 'admin',
+  avatarUrl: 'https://i.pravatar.cc/150?u=admin-user',
+  xp: 1000
+};
+
 export function Header() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  // const { user, logout } = useAuth(); // Auth disabled
+  const user = mockUser; // Using mock user
   const router = useRouter();
 
   const handleLogout = () => {
-    logout();
+    // logout(); // Auth disabled
     router.push('/');
   }
   
@@ -146,7 +159,7 @@ export function Header() {
             <Button variant="secondary" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user.avatarUrl} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
               </Avatar>
               <span className="sr-only">Toggle user menu</span>
             </Button>

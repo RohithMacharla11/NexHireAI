@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -9,6 +10,7 @@ import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
+import type { AppUser } from "@/lib/types";
 
 const navItems = {
   all: [
@@ -28,13 +30,23 @@ const navItems = {
   ],
 };
 
+const mockUser: AppUser = {
+  id: 'mock-user',
+  name: 'Admin User',
+  email: 'admin@example.com',
+  role: 'admin',
+  avatarUrl: 'https://i.pravatar.cc/150?u=admin-user',
+  xp: 1000
+};
+
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  // const { user, logout } = useAuth(); // Auth disabled
+  const user = mockUser; // Using mock user
   const router = useRouter();
 
   const handleLogout = () => {
-    logout();
+    // logout(); // Auth disabled
     router.push('/');
   }
 
@@ -73,7 +85,7 @@ export function Sidebar() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left">
                   <p className="text-sm font-medium">{user.name}</p>
