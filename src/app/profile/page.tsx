@@ -4,8 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, setDoc, getFirestore } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import type { User as UserType, AnalysisSummary } from '@/lib/types';
 import { ProfileCard } from '@/components/profile/ProfileCard';
@@ -19,7 +20,7 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const firestore = getFirestore();
+  const { firestore } = initializeFirebase();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -49,11 +50,13 @@ export default function ProfilePage() {
   }, [fetchProfile]);
   
   const handleProfileUpdate = async (updatedData: Partial<UserType>) => {
-    if (!user) return;
+    if (!user || !profileData) return;
+
     const userDocRef = doc(firestore, 'users', user.id);
     try {
+        const newData = { ...profileData, ...updatedData };
         await setDoc(userDocRef, updatedData, { merge: true });
-        setProfileData(prev => prev ? { ...prev, ...updatedData } : null);
+        setProfileData(newData);
         toast({ title: "Success", description: "Profile updated successfully!" });
     } catch (error) {
         console.error("Error updating profile:", error);
@@ -70,7 +73,6 @@ export default function ProfilePage() {
         experienceLevel: profileData.candidateSpecific?.experienceLevel || 'Fresher'
       }
 
-      // Quick check to see if we have something to analyze
       if(analysisInput.skills.length === 0 && !analysisInput.bio) {
         toast({
           title: "Not enough data",
@@ -99,6 +101,8 @@ export default function ProfilePage() {
   if (isLoading || authLoading || !profileData) {
     return <ProfileSkeleton />;
   }
+  
+  const hasAnalysis = !!profileData.analysis?.summary;
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary overflow-hidden">
@@ -111,16 +115,18 @@ export default function ProfilePage() {
                 transition={{ duration: 0.5 }}
                 className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start"
             >
-                <div className="lg:col-span-2">
+                <div className={hasAnalysis ? "lg:col-span-2" : "lg:col-span-3"}>
                     <ProfileCard 
                         profileData={profileData} 
                         onProfileUpdate={handleProfileUpdate} 
                         onRunAnalysis={runAnalysis}
                     />
                 </div>
-                <div className="lg:col-span-1">
-                    <PersonalUnderstanding analysis={profileData.analysis?.summary} />
-                </div>
+                {hasAnalysis && (
+                  <div className="lg:col-span-1">
+                      <PersonalUnderstanding analysis={profileData.analysis?.summary} />
+                  </div>
+                )}
             </motion.div>
         </div>
     </div>
@@ -130,13 +136,8 @@ export default function ProfilePage() {
 const ProfileSkeleton = () => (
     <div className="container mx-auto px-4 py-12 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-3">
                 <Skeleton className="h-[400px] w-full rounded-3xl" />
-            </div>
-            <div className="lg:col-span-1 space-y-4">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-48 w-full" />
             </div>
         </div>
     </div>

@@ -38,7 +38,7 @@ export function ProfileCard({ profileData, onProfileUpdate, onRunAnalysis }: Pro
       // Mock upload and analysis trigger.
       console.log('Resume uploaded:', file.name);
       await onProfileUpdate({ resumeUrl: `/resumes/${file.name}` });
-      await onRunAnalysis();
+      // The analysis is now triggered by a dedicated button
   }
 
   return (
@@ -71,7 +71,7 @@ export function ProfileCard({ profileData, onProfileUpdate, onRunAnalysis }: Pro
               <div className="md:ml-auto flex flex-col sm:flex-row gap-2">
                 <Button onClick={() => setIsEditing(true)} variant="outline">Edit Profile</Button>
                 {profileData.role === 'candidate' && 
-                    <Button onClick={onRunAnalysis}><BrainCircuit className="mr-2 h-4 w-4" /> Analyze</Button>
+                    <Button onClick={onRunAnalysis}><BrainCircuit className="mr-2 h-4 w-4" /> Analyze Profile</Button>
                 }
               </div>
             </div>
