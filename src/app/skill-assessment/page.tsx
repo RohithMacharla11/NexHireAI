@@ -3,7 +3,7 @@
 
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, startTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { collection, onSnapshot, Query } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -14,23 +14,22 @@ import type { Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { populateRoles } from '@/ai/flows/populate-roles-flow';
 import { generateAssessment } from '@/ai/flows/generate-assessment-flow';
+import { useAssessmentStore } from '@/hooks/use-assessment-store';
+
 
 export default function SkillAssessmentPage() {
   const { user, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
   const { firestore } = initializeFirebase();
   const { toast } = useToast();
+  const setAssessment = useAssessmentStore((state) => state.setAssessment);
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPopulating, setIsPopulating] = useState(false);
-  const [isGenerating, setIsGenerating] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [generatingRoleId, setGeneratingRoleId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authIsLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authIsLoading, router]);
 
   const handlePopulate = async () => {
     setIsPopulating(true);
@@ -45,6 +44,12 @@ export default function SkillAssessmentPage() {
       // The onSnapshot listener will handle setting isPopulating to false by updating roles
     }
   };
+
+  useEffect(() => {
+    if (!authIsLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authIsLoading, router]);
 
   useEffect(() => {
     if (!firestore) return;
@@ -75,19 +80,22 @@ export default function SkillAssessmentPage() {
   
   const handleStartAssessment = (roleId: string, roleName: string) => {
     startTransition(async () => {
-      setIsGenerating(roleId);
-      toast({ title: `Generating Assessment for ${roleName}`, description: 'The AI is creating a unique set of 30 questions for you. Please wait.' });
+      setGeneratingRoleId(roleId);
+      toast({ title: `Generating Assessment for ${roleName}`, description: 'The AI is creating a unique set of 30 questions. Please wait.' });
       try {
         const assessment = await generateAssessment(roleId);
-        // TODO: Navigate to the assessment runner page with the generated questions
-        console.log('Generated Assessment:', assessment);
-        toast({ title: 'Assessment Ready!', description: `Your test for ${roleName} is ready to begin.` });
-        // router.push(`/assessment/${assessment.id}`);
+        
+        setAssessment(assessment);
+
+        toast({ title: 'Assessment Ready!', description: `Your test for ${roleName} is about to begin.` });
+
+        router.push(`/assessment/${assessment.id}`);
+        
       } catch (error) {
          console.error("Error generating assessment:", error);
          toast({ title: "Generation Failed", description: (error as Error).message, variant: "destructive" });
       } finally {
-        setIsGenerating(null);
+        setGeneratingRoleId(null);
       }
     });
   }
@@ -149,10 +157,10 @@ export default function SkillAssessmentPage() {
                         <Button 
                           className="w-full mt-auto" 
                           onClick={() => handleStartAssessment(role.id, role.name)} 
-                          disabled={isGenerating !== null}
+                          disabled={isPending}
                         >
-                          {isGenerating === role.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          {isGenerating === role.id ? 'Generating...' : 'Start Assessment'}
+                          {isPending && generatingRoleId === role.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          {isPending && generatingRoleId === role.id ? 'Generating...' : 'Start Assessment'}
                         </Button>
                     </CardContent>
                 </Card>
