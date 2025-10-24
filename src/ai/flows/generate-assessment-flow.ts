@@ -4,8 +4,8 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getFirestore, doc, getDoc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { getFirestore, doc, getDoc, collection, writeBatch, serverTimestamp, getDocs, query, where, limit } from 'firebase/firestore';
+import { initializeFirebaseForServer } from '@/firebase/server-init';
 import type { Question, Assessment, Role } from '@/lib/types';
 
 const QuestionSchema = z.object({
@@ -30,7 +30,7 @@ const generateAssessmentFlow = ai.defineFlow(
     outputSchema: z.custom<Assessment>(),
   },
   async (roleId) => {
-    const { firestore } = initializeFirebase();
+    const { firestore } = initializeFirebaseForServer();
     
     // 1. Fetch the role and its sub-skills
     const roleRef = doc(firestore, 'roles', roleId);
@@ -42,61 +42,32 @@ const generateAssessmentFlow = ai.defineFlow(
     const { subSkills } = roleData;
 
     const allGeneratedQuestions: Question[] = [];
-    const batch = writeBatch(firestore);
-    const questionsCollectionRef = collection(firestore, `roles/${roleId}/questions`);
+    const questionsCollectionRef = collection(firestore, 'roles', roleId, 'questions');
 
-    // 2. Generate 5 questions for each sub-skill
+    // 2. Fetch 5 questions for each sub-skill from the DB
     for (const skill of subSkills) {
-      const { output } = await ai.generate({
-        prompt: `Generate 5 assessment questions for the skill "${skill}" within the context of a "${roleData.name}" role. Include a mix of difficulties (Easy, Medium, Hard) and types (mcq, short, coding). For MCQs, provide 4 options. For coding questions, provide simple test cases.`,
-        output: { schema: GeneratedQuestionsSchema },
-        config: { temperature: 0.7 },
-      });
-
-      if (!output || !output.questions) {
-        throw new Error(`AI failed to generate questions for skill: ${skill}`);
-      }
-
-      output.questions.forEach(q => {
-        const questionDocRef = doc(questionsCollectionRef); // auto-gen ID
-        const newQuestion: Question = {
-            id: questionDocRef.id,
-            skill: skill,
-            tags: [roleData.name, skill],
-            ...q,
-        };
-        batch.set(questionDocRef, newQuestion);
-        allGeneratedQuestions.push(newQuestion);
+      const q = query(questionsCollectionRef, where('skill', '==', skill), limit(5));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        allGeneratedQuestions.push({ id: doc.id, ...doc.data() } as Question);
       });
     }
 
-    // 3. Generate 5 "combined" cross-skill questions
-    const { output: combinedOutput } = await ai.generate({
-        prompt: `Generate 5 complex, scenario-based assessment questions for a "${roleData.name}" role that integrate and test knowledge across multiple of the following skills: ${subSkills.join(', ')}. Include a mix of difficulties and types (mcq, short, coding).`,
-        output: { schema: GeneratedQuestionsSchema },
-        config: { temperature: 0.8 },
+    // 3. Fetch 5 "combined" cross-skill questions
+    const combinedQuery = query(questionsCollectionRef, where('skill', '==', 'combined'), limit(5));
+    const combinedSnapshot = await getDocs(combinedQuery);
+    combinedSnapshot.forEach((doc) => {
+        allGeneratedQuestions.push({ id: doc.id, ...doc.data() } as Question);
     });
 
-    if (!combinedOutput || !combinedOutput.questions) {
-        throw new Error('AI failed to generate combined questions.');
+    // This is a failsafe in case the question bank isn't fully populated.
+    // In a real scenario, you might want more robust logic.
+    if (allGeneratedQuestions.length < 30) {
+        console.warn(`Warning: Only found ${allGeneratedQuestions.length} questions for role ${roleId}. Assessment may be incomplete.`);
     }
 
-    combinedOutput.questions.forEach(q => {
-        const questionDocRef = doc(questionsCollectionRef); // auto-gen ID
-        const newQuestion: Question = {
-            id: questionDocRef.id,
-            skill: 'combined', // Special skill tag for cross-disciplinary questions
-            tags: [roleData.name, ...subSkills],
-            ...q,
-        };
-        batch.set(questionDocRef, newQuestion);
-        allGeneratedQuestions.push(newQuestion);
-      });
 
-    // 4. Commit all new questions to Firestore
-    await batch.commit();
-
-    // 5. Assemble and return the assessment object
+    // 4. Assemble and return the assessment object
     const totalTimeLimit = allGeneratedQuestions.reduce((acc, q) => acc + q.timeLimit, 0);
 
     const assessment: Assessment = {
