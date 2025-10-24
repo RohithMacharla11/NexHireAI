@@ -76,7 +76,6 @@ export const scoreAssessmentFlow = ai.defineFlow(
             },
             config: { 
               temperature: 0.2,
-              response_mime_type: 'application/json',
             }
         });
         
@@ -159,7 +158,7 @@ export const scoreAssessmentFlow = ai.defineFlow(
   }
 );
 
-export async function scoreAssessment(attempt: Omit<AssessmentAttempt, 'id'> & { questions: Question[] }): Promise<Omit<z.infer<typeof ScoredFieldsSchema>, 'aiFeedback'>> {
+export async function scoreAssessment(attempt: Omit<AssessmentAttempt, 'id'> & { questions: Question[] }): Promise<z.infer<typeof ScoredFieldsSchema>> {
   const scoredData = await scoreAssessmentFlow(attempt);
   return scoredData;
 }

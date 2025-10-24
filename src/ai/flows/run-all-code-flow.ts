@@ -72,7 +72,6 @@ const runAllCodeFlow = ai.defineFlow(
       },
       config: { 
         temperature: 0.1,
-        response_mime_type: 'application/json',
      }
     });
 
@@ -104,5 +103,3 @@ const runAllCodeFlow = ai.defineFlow(
 export async function runAllCode(input: RunAllCodeInput): Promise<RunAllCodeOutput> {
   return runAllCodeFlow(input);
 }
-
-    
