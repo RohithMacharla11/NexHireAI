@@ -22,17 +22,8 @@ const QuestionSchema = z.object({
   starterCode: z.string().optional(),
 });
 
-// Zod schema for questions grouped by a sub-skill
-const SubSkillQuestionsSchema = z.object({
-  skill: z.string(),
-  questions: z.array(QuestionSchema).length(5),
-});
-
-// Zod schema for the entire set of questions for a role
-const GeneratedRoleQuestionsSchema = z.object({
-  skillQuestions: z.array(SubSkillQuestionsSchema).length(5).describe("Array of 5 objects, one for each sub-skill."),
-  combinedQuestions: z.array(QuestionSchema).length(5).describe("Array of 5 complex cross-skill questions."),
-});
+// Zod schema for questions for a SINGLE skill
+const QuestionsForSkillSchema = z.array(QuestionSchema).length(5);
 
 
 const generateAssessmentFlow = ai.defineFlow(
@@ -67,65 +58,66 @@ const generateAssessmentFlow = ai.defineFlow(
         allQuestions.push({ id: doc.id, ...doc.data() } as Question);
       });
     } else {
-      // Questions do NOT exist, generate and save them
-      console.log(`No questions found for role: ${roleName}. Generating new questions...`);
-      
-      const { output: generatedData } = await ai.generate({
-        prompt: `You are an expert technical interviewer tasked with creating a high-quality assessment for the professional role: "${roleName}".
-        The role has the following 5 sub-skills: ${subSkills.join(', ')}.
-
-        Your output must be a single JSON object containing two main properties:
-        1. 'skillQuestions': An array of 5 objects. Each object must correspond to one of the sub-skills and contain:
-            - 'skill': The name of the sub-skill.
-            - 'questions': An array of exactly 5 assessment questions for that specific sub-skill.
-        2. 'combinedQuestions': An array of exactly 5 complex, scenario-based questions that integrate knowledge across multiple of the role's sub-skills.
-        
-        For every single question, ensure it has the properties: 'questionText', 'type', 'difficulty', 'timeLimit', and other relevant fields based on type.
-
-        **IMPORTANT QUESTION DESIGN INSTRUCTIONS:**
-        - **MCQs**: Do not ask simple definitions. Create scenario-based questions, code-output prediction questions, or "Which of the following is NOT..." questions to test deeper understanding. Provide 4 options. The 'correctAnswer' should be the full text of the correct option.
-        - **Short Answer**: Ask for one-line code fixes, brief conceptual comparisons (e.g., "Explain the main difference between X and Y in one sentence"), or have the user fill in a missing piece of a code block. The 'correctAnswer' field should contain the ideal answer.
-        - **Coding**: Create a clear problem statement. For 'Easy' questions, provide simple starter code. For 'Medium' and 'Hard', the starter code can be more of a basic boilerplate. Include 3-5 diverse test cases. The 'correctAnswer' field is not needed for coding questions.
-        - **Difficulty Mix**: For each set of 5 questions per skill, ensure a mix of difficulties: 2 Easy, 2 Medium, 1 Hard. Do the same for the combined questions.
-
-        Adhere strictly to the JSON output schema.`,
-        output: { schema: GeneratedRoleQuestionsSchema },
-        config: { temperature: 0.7 }
-      });
-      
-      if (!generatedData) {
-        throw new Error(`AI failed to generate questions for role ${roleName}.`);
-      }
-
+      // Questions do NOT exist, generate and save them in smaller batches
+      console.log(`No questions found for role: ${roleName}. Generating new questions in batches...`);
       const batch = writeBatch(firestore);
-      const questionIds: string[] = [];
 
-      // Save sub-skill questions
-      for (const skillGroup of generatedData.skillQuestions) {
-        for (const question of skillGroup.questions) {
-          const questionDocRef = doc(questionsCollectionRef);
-          const newQuestion: Omit<Question, 'id'> = {
-              skill: skillGroup.skill,
-              tags: [roleName, skillGroup.skill],
-              ...question,
-          };
-          batch.set(questionDocRef, newQuestion);
-          allQuestions.push({ id: questionDocRef.id, ...newQuestion });
-          questionIds.push(questionDocRef.id);
+      // A. Generate questions for each sub-skill one by one
+      for (const skill of subSkills) {
+        console.log(`Generating 5 questions for sub-skill: ${skill}`);
+        const { output: skillQuestions } = await ai.generate({
+          prompt: `You are an expert technical interviewer creating questions for the "${roleName}" role.
+          Generate exactly 5 assessment questions specifically for the sub-skill: "${skill}".
+          
+          **INSTRUCTIONS:**
+          - Create a mix of difficulties: 2 Easy, 2 Medium, 1 Hard.
+          - For MCQs, create scenario-based questions, not simple definitions. Provide 4 options. 'correctAnswer' must be the full text of the correct option.
+          - For Short Answer, ask for one-line code fixes or brief conceptual comparisons. 'correctAnswer' should be the ideal answer.
+          - For Coding, provide a clear problem statement and 3-5 test cases.
+
+          Adhere strictly to the JSON output schema, which is an array of 5 question objects.`,
+          output: { schema: QuestionsForSkillSchema },
+          config: { temperature: 0.7 }
+        });
+
+        if (!skillQuestions) throw new Error(`AI failed to generate questions for sub-skill ${skill}`);
+
+        for (const question of skillQuestions) {
+            const questionDocRef = doc(questionsCollectionRef);
+            const newQuestion: Omit<Question, 'id'> = {
+                skill: skill,
+                tags: [roleName, skill],
+                ...question,
+            };
+            batch.set(questionDocRef, newQuestion);
+            allQuestions.push({ id: questionDocRef.id, ...newQuestion });
         }
       }
 
-      // Save combined questions
-      for (const question of generatedData.combinedQuestions) {
-        const questionDocRef = doc(questionsCollectionRef);
-        const newQuestion: Omit<Question, 'id'> = {
-           skill: 'combined',
-           tags: [roleName, ...subSkills],
-           ...question,
-       };
-       batch.set(questionDocRef, newQuestion);
-       allQuestions.push({ id: questionDocRef.id, ...newQuestion });
-       questionIds.push(questionDocRef.id);
+      // B. Generate the 5 combined, cross-skill questions
+       console.log(`Generating 5 combined cross-skill questions...`);
+       const { output: combinedQuestions } = await ai.generate({
+          prompt: `You are an expert technical interviewer creating questions for the "${roleName}" role with sub-skills: ${subSkills.join(', ')}.
+          Generate exactly 5 complex, scenario-based questions that integrate knowledge across multiple of those sub-skills.
+          
+          **INSTRUCTIONS:**
+          - Create a mix of difficulties: 2 Easy, 2 Medium, 1 Hard.
+          - Adhere strictly to the JSON output schema, which is an array of 5 question objects.`,
+          output: { schema: QuestionsForSkillSchema },
+          config: { temperature: 0.8 }
+      });
+
+      if (!combinedQuestions) throw new Error(`AI failed to generate combined questions.`);
+
+      for (const question of combinedQuestions) {
+          const questionDocRef = doc(questionsCollectionRef);
+          const newQuestion: Omit<Question, 'id'> = {
+             skill: 'combined',
+             tags: [roleName, ...subSkills],
+             ...question,
+         };
+         batch.set(questionDocRef, newQuestion);
+         allQuestions.push({ id: questionDocRef.id, ...newQuestion });
       }
       
       await batch.commit();
