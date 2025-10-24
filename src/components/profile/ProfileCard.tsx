@@ -60,7 +60,7 @@ export function ProfileCard({ profileData, onRunAnalysis, onEdit, onViewInsights
                 </div>
             </div>
         </div>
-        <div className="flex-grow overflow-y-hidden pr-4">
+        <div className="flex-grow overflow-y-auto pr-4">
           <ViewProfile profileData={profileData} onResumeUpload={handleResumeUpload} />
         </div>
       </div>
