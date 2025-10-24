@@ -71,7 +71,7 @@ const generateAssessmentFlow = ai.defineFlow(
       console.log(`No questions found for role: ${roleName}. Generating new questions...`);
       
       const { output: generatedData } = await ai.generate({
-        prompt: `Generate a full set of 30 assessment questions for the professional role: "${roleName}".
+        prompt: `You are an expert technical interviewer tasked with creating a high-quality assessment for the professional role: "${roleName}".
         The role has the following 5 sub-skills: ${subSkills.join(', ')}.
 
         Your output must be a single JSON object containing two main properties:
@@ -80,8 +80,14 @@ const generateAssessmentFlow = ai.defineFlow(
             - 'questions': An array of exactly 5 assessment questions for that specific sub-skill.
         2. 'combinedQuestions': An array of exactly 5 complex, scenario-based questions that integrate knowledge across multiple of the role's sub-skills.
         
-        For every single question, ensure it has the properties: 'questionText', 'type' (mcq, short, or coding), 'difficulty' (Easy, Medium, or Hard), 'timeLimit' (in seconds), and other relevant fields like 'options' for mcq or 'testCases' for coding.
-        
+        For every single question, ensure it has the properties: 'questionText', 'type', 'difficulty', 'timeLimit', and other relevant fields.
+
+        **IMPORTANT QUESTION DESIGN INSTRUCTIONS:**
+        - **MCQs**: Do not ask simple definitions. Instead, create scenario-based questions, code-output prediction questions, or "Which of the following is NOT..." questions to test deeper understanding.
+        - **Short Answer**: Ask for one-line code fixes, brief conceptual comparisons (e.g., "Explain the main difference between X and Y"), or have the user fill in a missing piece of a code block.
+        - **Coding**: Create a clear problem statement. For 'Easy' questions, provide simple starter code. For 'Medium' and 'Hard', the starter code can be more of a basic boilerplate. Include 3-5 diverse test cases.
+        - **Difficulty Mix**: For each set of 5 questions per skill, ensure a mix of difficulties: 2 Easy, 2 Medium, 1 Hard.
+
         Adhere strictly to the JSON output schema.`,
         output: { schema: GeneratedRoleQuestionsSchema },
         config: { temperature: 0.7 }
