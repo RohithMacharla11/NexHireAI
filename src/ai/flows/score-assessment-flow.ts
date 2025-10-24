@@ -39,8 +39,7 @@ export const scoreAssessmentFlow = ai.defineFlow(
     // --- BATCH SCORING FOR SHORT ANSWERS ---
     const shortAnswerResponses = responses.filter(r => {
         const q = questions.find(q => q.id === r.questionId);
-        // Only score non-exact matches that have content
-        return q?.type === 'short' && r.answer && q.correctAnswer && r.answer.trim().toLowerCase() !== q.correctAnswer.trim().toLowerCase();
+        return q?.type === 'short' && r.answer && q.correctAnswer;
     });
 
     const scoresMap: Record<string, number> = {};
@@ -55,6 +54,7 @@ export const scoreAssessmentFlow = ai.defineFlow(
             };
         });
         
+        console.log(`Batch scoring ${scoringPayload.length} short answers...`);
         const { output: shortAnswerScores } = await ai.generate({
             prompt: `You are an expert AI grader. Evaluate a batch of user answers against their correct counterparts. For each item, provide a semantic similarity score from 0.0 (completely wrong) to 1.0 (perfectly correct). Respond with a JSON array of objects, where each object has a "questionId" and a "score".
             
@@ -103,22 +103,17 @@ export const scoreAssessmentFlow = ai.defineFlow(
       let evaluatedResponse = { ...response };
 
       if (question.type === 'mcq') {
-        correctnessFactor = (response.answer === question.correctAnswer) ? 1 : 0;
+        correctnessFactor = (response.answer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()) ? 1 : 0;
         evaluatedResponse.isCorrect = correctnessFactor === 1;
       } 
       else if (question.type === 'short') {
-         if (response.answer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()) {
-            correctnessFactor = 1;
-         } else if (response.answer && scoresMap[response.questionId] !== undefined) {
-             correctnessFactor = scoresMap[response.questionId];
-         } else {
-             correctnessFactor = 0; // No answer or scoring failed
-         }
+         // Use the pre-calculated score from the batch AI call
+         correctnessFactor = scoresMap[response.questionId] ?? 0;
          evaluatedResponse.isCorrect = correctnessFactor > 0.7;
       }
       else if (question.type === 'coding') {
           const totalTests = question.testCases?.length || 0;
-          const passedTests = response.executionResult?.filter(r => r.status === 'Passed').length || 0;
+          const passedTests = evaluatedResponse.executionResult?.filter(r => r.status === 'Passed').length || 0;
           correctnessFactor = totalTests > 0 ? (passedTests / totalTests) : 0;
           evaluatedResponse.testCasesPassed = passedTests;
           evaluatedResponse.totalTestCases = totalTests;

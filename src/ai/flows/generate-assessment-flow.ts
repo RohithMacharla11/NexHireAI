@@ -17,7 +17,7 @@ const GeneratedQuestionSchema = z.object({
   questionText: z.string(),
   type: z.enum(['mcq', 'short', 'coding']),
   options: z.array(z.string()).optional(),
-  correctAnswer: z.string().optional(),
+  correctAnswer: z.string().optional().describe("For MCQs, this MUST be the full text of the correct option. For 'short' type, the ideal answer. Not needed for 'coding' type."),
   testCases: z.array(z.object({ input: z.string(), expectedOutput: z.string() })).optional(),
   difficulty: z.enum(['Easy', 'Medium', 'Hard']),
   timeLimit: z.number().describe('Time limit in seconds'),
@@ -61,8 +61,10 @@ const generateAssessmentFlow = ai.defineFlow(
       });
     } else {
       // Questions do NOT exist, generate and save them in smaller batches
-      console.log(`No questions found for role: ${roleName}. Generating new questions in batches...`);
+      console.log(`No questions found for role: ${roleName}. Generating new questions...`);
       const batch = writeBatch(firestore);
+
+      const allGeneratedQuestions: Omit<Question, 'id'>[] = [];
 
       // A. Generate questions for each sub-skill one by one
       for (const skill of subSkills) {
@@ -86,14 +88,11 @@ const generateAssessmentFlow = ai.defineFlow(
         if (!skillQuestions) throw new Error(`AI failed to generate questions for sub-skill ${skill}`);
 
         for (const question of skillQuestions) {
-            const questionDocRef = doc(questionsCollectionRef);
-            const newQuestion: Omit<Question, 'id'> = {
+            allGeneratedQuestions.push({
                 skill: skill,
                 tags: [roleName, skill],
                 ...question,
-            };
-            batch.set(questionDocRef, newQuestion);
-            allQuestions.push({ id: questionDocRef.id, ...newQuestion });
+            });
         }
       }
 
@@ -112,20 +111,24 @@ const generateAssessmentFlow = ai.defineFlow(
       });
 
       if (!combinedQuestions) throw new Error(`AI failed to generate combined questions.`);
-
+      
       for (const question of combinedQuestions) {
-          const questionDocRef = doc(questionsCollectionRef);
-          const newQuestion: Omit<Question, 'id'> = {
+          allGeneratedQuestions.push({
              skill: 'combined',
              tags: [roleName, ...subSkills],
              ...question,
-         };
-         batch.set(questionDocRef, newQuestion);
-         allQuestions.push({ id: questionDocRef.id, ...newQuestion });
+         });
       }
       
+      // C. Save all generated questions to Firestore and collect their new IDs
+      for (const qData of allGeneratedQuestions) {
+        const questionDocRef = doc(questionsCollectionRef);
+        batch.set(questionDocRef, qData);
+        allQuestions.push({ id: questionDocRef.id, ...qData });
+      }
+
       await batch.commit();
-      console.log(`Successfully generated and saved 30 questions for role: ${roleName}`);
+      console.log(`Successfully generated and saved ${allGeneratedQuestions.length} questions for role: ${roleName}`);
     }
 
     // 3. Assemble and return the final assessment object

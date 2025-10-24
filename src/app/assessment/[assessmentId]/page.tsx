@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -11,13 +12,12 @@ import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Timer, Loader2, ChevronLeft, ChevronRight, Send, Play } from 'lucide-react';
+import { Timer, Loader2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import type { AssessmentAttempt, UserResponse, Question, CodeExecutionResult } from '@/lib/types';
+import type { AssessmentAttempt } from '@/lib/types';
 import { CodeEditor } from '@/components/assessment/CodeEditor';
 import { scoreAssessment } from '@/ai/flows/score-assessment-flow';
-import { runAllCode } from '@/ai/flows/run-all-code-flow';
 
 const AssessmentRunner = () => {
   const router = useRouter();
@@ -25,7 +25,6 @@ const AssessmentRunner = () => {
   const { toast } = useToast();
   const { firestore } = initializeFirebase();
   const [isSubmitting, startSubmitting] = useTransition();
-  const [isBatchRunning, startBatchRunning] = useTransition();
   
   const { user, isLoading: authLoading } = useAuth();
   const {
@@ -36,7 +35,6 @@ const AssessmentRunner = () => {
     nextQuestion,
     prevQuestion,
     setResponse,
-    setMultipleResponses,
     reset,
     isHydrated,
   } = useAssessmentStore();
@@ -86,7 +84,7 @@ const AssessmentRunner = () => {
     startSubmitting(async () => {
       toast({ title: "Submitting Assessment", description: "Evaluating your answers. This may take a moment." });
       
-      const filledResponses = Object.values(responses).map(response => ({
+      const finalResponses = Object.values(responses).map(response => ({
         ...response,
         timeTaken: (Date.now() - (startTime || Date.now())) / (assessment.questions.length || 1), // Approximate time per question
       }));
@@ -98,7 +96,7 @@ const AssessmentRunner = () => {
           roleId: assessment.roleId,
           startedAt: startTime,
           submittedAt: Date.now(),
-          responses: filledResponses,
+          responses: finalResponses,
           questions: assessment.questions, // Pass questions for scoring context
       };
 
@@ -123,46 +121,12 @@ const AssessmentRunner = () => {
           console.error("Error submitting and scoring assessment:", error);
           const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
           const userFriendlyMessage = errorMessage.includes("429") 
-            ? "Submission failed due to high traffic during AI evaluation. This can be intermittent. Please wait a moment and try submitting again."
+            ? "Submission failed due to high traffic during AI evaluation. This is rare but can happen. Please wait a moment and try submitting again."
             : `An unexpected error occurred during submission. Details: ${errorMessage}`;
           toast({ title: "Submission Failed", description: userFriendlyMessage, variant: "destructive" });
       }
     });
   };
-
-  const handleRunAllCode = () => {
-    if (!assessment) return;
-    const codingResponses = assessment.questions
-      .filter(q => q.type === 'coding')
-      .map(q => {
-        const response = responses[q.id];
-        return {
-          questionId: q.id,
-          code: response?.code || q.starterCode || '',
-          language: response?.language || 'javascript',
-          testCases: q.testCases || []
-        };
-      });
-
-    if (codingResponses.length === 0) return;
-    
-    startBatchRunning(async () => {
-      toast({ title: 'Running All Code...', description: 'Evaluating all coding solutions in a single batch.' });
-      try {
-        const results = await runAllCode({ submissions: codingResponses });
-        const updatedResponses: Record<string, Partial<UserResponse>> = {};
-        for (const [questionId, result] of Object.entries(results)) {
-          updatedResponses[questionId] = { executionResult: result as CodeExecutionResult[] };
-        }
-        setMultipleResponses(updatedResponses);
-        toast({ title: 'Batch Execution Finished!', description: 'Check the output panels for results.' });
-      } catch (error) {
-        console.error('Batch code execution failed:', error);
-        toast({ title: 'Execution Error', description: (error as Error).message || 'An unexpected error occurred.', variant: 'destructive' });
-      }
-    });
-  };
-
 
   if (authLoading || !assessment || !isHydrated) {
     return (
@@ -176,7 +140,26 @@ const AssessmentRunner = () => {
   const currentQuestion = assessment.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / assessment.questions.length) * 100;
   const currentResponse = responses[currentQuestion.id];
-  const codingQuestionsCount = assessment.questions.filter(q => q.type === 'coding').length;
+  
+  const isCodingQuestion = currentQuestion.type === 'coding';
+  // A coding question is "answered" if the execution result is available
+  const isCodingAnswered = isCodingQuestion && !!currentResponse?.executionResult;
+  // A non-coding question is "answered" if the answer string is not empty
+  const isNonCodingAnswered = !isCodingQuestion && !!currentResponse?.answer?.trim();
+  
+  const canGoNext = !isCodingQuestion || isCodingAnswered;
+
+  const handleNextWithCheck = () => {
+    if (canGoNext) {
+      nextQuestion();
+    } else if (isCodingQuestion && !isCodingAnswered) {
+      toast({
+        title: "Please run your code",
+        description: "You must run your code against the test cases before proceeding.",
+        variant: "destructive"
+      });
+    }
+  }
 
   const formatTime = (seconds: number) => {
     if (seconds < 0) return '00:00';
@@ -198,12 +181,6 @@ const AssessmentRunner = () => {
            <div className="flex justify-between items-center">
              <CardTitle className="text-2xl">{assessment.roleName} Assessment</CardTitle>
              <div className="flex items-center gap-4">
-                {codingQuestionsCount > 1 && (
-                    <Button onClick={handleRunAllCode} disabled={isBatchRunning || isSubmitting} variant="secondary">
-                        {isBatchRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                        Run All Code
-                    </Button>
-                )}
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold">
                     <Timer className="h-5 w-5" />
                     <span>{timeLeft !== null ? formatTime(timeLeft) : 'Loading...'}</span>
@@ -255,17 +232,17 @@ const AssessmentRunner = () => {
         </div>
 
         <CardFooter className="flex justify-between border-t pt-6 sticky bottom-0 bg-card/80 backdrop-blur-sm">
-            <Button variant="outline" onClick={prevQuestion} disabled={isSubmitting || isBatchRunning}>
+            <Button variant="outline" onClick={prevQuestion} disabled={isSubmitting}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             
             {currentQuestionIndex === assessment.questions.length - 1 ? (
-                <Button onClick={handleSubmit} disabled={isSubmitting || isBatchRunning}>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                     {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
                 </Button>
             ) : (
-                <Button onClick={nextQuestion} disabled={isSubmitting || isBatchRunning}>
+                <Button onClick={handleNextWithCheck} disabled={isSubmitting} title={!canGoNext ? 'Please run your code first' : ''}>
                     Next <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
             )}

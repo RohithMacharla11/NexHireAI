@@ -11,10 +11,10 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from '@/components/ui/button';
-import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Loader2, Play, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { runAllCode } from '@/ai/flows/run-all-code-flow';
+import { runCode } from '@/ai/flows/run-code-flow';
 import type { Question, CodeExecutionResult, UserResponse } from '@/lib/types';
 
 interface CodeEditorProps {
@@ -36,15 +36,14 @@ export function CodeEditor({ question, response, onResponseChange }: CodeEditorP
         startTransition(async () => {
             toast({ title: 'Running Code...', description: 'Please wait while we evaluate your solution.' });
             try {
-                const result = await runAllCode({ submissions: [{
-                    questionId: question.id,
+                const result = await runCode({
                     code,
                     language,
                     testCases: question.testCases || [],
-                }]});
+                });
 
-                if (result[question.id]) {
-                    onResponseChange({ executionResult: result[question.id] as CodeExecutionResult[] });
+                if (result) {
+                    onResponseChange({ executionResult: result as CodeExecutionResult[] });
                     setActiveTab('output');
                     toast({ title: 'Execution Finished!', description: 'Check the output panel for results.' });
                 } else {
@@ -151,5 +150,3 @@ export function CodeEditor({ question, response, onResponseChange }: CodeEditorP
         </div>
     )
 }
-
-    
