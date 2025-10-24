@@ -70,10 +70,10 @@ export const scoreAssessmentFlow = ai.defineFlow(
             ${JSON.stringify(scoringPayload, null, 2)}
             
             Your response MUST be a valid JSON object of the format: { "questionId": score, ... }`,
-            output: { schema: ShortAnswerScoresSchema },
             config: { 
               temperature: 0.2,
               response_mime_type: 'application/json',
+              response_schema: ShortAnswerScoresSchema,
             }
         });
         
