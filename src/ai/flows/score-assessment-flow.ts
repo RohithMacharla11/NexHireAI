@@ -25,6 +25,9 @@ const ScoredFieldsSchema = z.object({
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// New schema for the batched scoring of short answers
+const ShortAnswerScoresSchema = z.record(z.string(), z.number().min(0).max(1));
+
 export const scoreAssessmentFlow = ai.defineFlow(
   {
     name: 'scoreAssessmentFlow',
@@ -40,6 +43,43 @@ export const scoreAssessmentFlow = ai.defineFlow(
     let totalUserEarnedScore = 0;
 
     const skillScores: Record<string, { earned: number, max: number }> = {};
+    
+    // --- BATCH SCORING FOR SHORT ANSWERS ---
+    const shortAnswerResponses = responses.filter(r => {
+        const q = questions.find(q => q.id === r.questionId);
+        return q?.type === 'short' && r.answer && r.answer.trim().toLowerCase() !== q.correctAnswer?.trim().toLowerCase();
+    });
+
+    let shortAnswerScores: z.infer<typeof ShortAnswerScoresSchema> = {};
+
+    if (shortAnswerResponses.length > 0) {
+        const scoringPayload = shortAnswerResponses.map(r => {
+            const q = questions.find(q => q.id === r.questionId)!;
+            return {
+                questionId: r.questionId,
+                userAnswer: r.answer,
+                correctAnswer: q.correctAnswer,
+            };
+        });
+        
+        await wait(1500); // A single wait before the batch call
+        const { output } = await ai.generate({
+            prompt: `You are an expert AI grader. Evaluate a batch of user answers against their correct counterparts. For each item, provide a semantic similarity score from 0.0 (completely wrong) to 1.0 (perfectly correct). Respond with a JSON object mapping each questionId to its score.
+            
+            Batch to Score:
+            ${JSON.stringify(scoringPayload, null, 2)}
+            
+            Your response MUST be a valid JSON object of the format: { "questionId": score, ... }`,
+            output: { schema: ShortAnswerScoresSchema },
+            config: { temperature: 0.2 }
+        });
+        
+        if (output) {
+            shortAnswerScores = output;
+        }
+    }
+    // --- END BATCH SCORING ---
+
 
     const evaluatedResponses: UserResponse[] = [];
     for (const response of responses) {
@@ -69,23 +109,12 @@ export const scoreAssessmentFlow = ai.defineFlow(
       else if (question.type === 'short') {
          if (response.answer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()) {
             correctnessFactor = 1;
-         } else if (response.answer) { // Only call AI if there is an answer
-             await wait(1500); // Wait for 1.5 seconds before making the API call to avoid rate limiting
-             const { output: semanticScore } = await ai.generate({
-                prompt: `Evaluate if the user's answer is semantically equivalent to the correct answer. User Answer: "${response.answer}". Correct Answer: "${question.correctAnswer}". Respond with a single number between 0.0 (completely wrong) and 1.0 (perfectly correct).`,
-                output: { schema: z.number().min(0).max(1).nullable() },
-                config: { temperature: 0.2 }
-            });
-            // Handle null case from AI
-            if (typeof semanticScore === 'number') {
-                correctnessFactor = semanticScore;
-            } else {
-                correctnessFactor = 0; // Default to 0 if AI fails to return a number
-            }
+         } else if (response.answer && shortAnswerScores[response.questionId] !== undefined) {
+             correctnessFactor = shortAnswerScores[response.questionId];
          } else {
-             correctnessFactor = 0; // No answer provided
+             correctnessFactor = 0; // No answer or scoring failed
          }
-         evaluatedResponse.isCorrect = correctnessFactor > 0.7; // Consider it "correct" if it's mostly right
+         evaluatedResponse.isCorrect = correctnessFactor > 0.7;
       }
       else if (question.type === 'coding') {
           const totalTests = question.testCases?.length || 0;
