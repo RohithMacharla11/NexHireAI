@@ -52,12 +52,12 @@ const runCodeFlow = ai.defineFlow(
       {{{code}}}
       \`\`\`
 
-      You MUST evaluate the code against each of the following test cases and determine if the code's output matches the expected output.
-      For each test case, determine the status ('Passed', 'Failed', 'Error', or 'Time Limit Exceeded').
-      If the code has syntax errors or would likely cause a runtime error, set the status to 'Error' and provide a brief error message in the 'output' field.
-      Simulate a realistic execution time and memory usage for each test case.
-      
-      **Crucially, for every test case, you must include the original 'expectedOutput' in the result object.**
+      You MUST evaluate the code against each of the following test cases.
+      - For each test case, determine if the code's output matches the expected output.
+      - Set the status to 'Passed', 'Failed', or 'Error'.
+      - If the code has syntax errors or would likely cause a runtime error, set the status to 'Error' and provide a brief error message in the 'output' field.
+      - Simulate a realistic execution time and memory usage for each test case.
+      - For every test case, you must include the original 'expectedOutput' in your result object.
 
       Test Cases:
       {{#each testCases}}
@@ -65,7 +65,8 @@ const runCodeFlow = ai.defineFlow(
         Expected Output: {{{this.expectedOutput}}}
       {{/each}}
       
-      Provide the output as a JSON array that strictly follows the output schema.`,
+      Your response MUST be a valid JSON array that strictly follows the output schema and nothing else. Do not include any extra text, commentary, or markdown formatting.
+      `,
       output: {
         schema: RunCodeOutputSchema,
       },
