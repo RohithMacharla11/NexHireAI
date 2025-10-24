@@ -149,11 +149,11 @@ const AssessmentRunner = () => {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary flex items-center justify-center p-4">
+    <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary p-4">
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
       
-      <Card className="w-full max-w-6xl bg-card/70 backdrop-blur-sm border-border/20 shadow-xl">
-        <CardHeader className="border-b">
+      <Card className="w-full max-w-6xl mx-auto bg-card/70 backdrop-blur-sm border-border/20 shadow-xl">
+        <CardHeader className="border-b sticky top-[80px] bg-card/80 backdrop-blur-sm z-20">
            <div className="flex justify-between items-center">
              <CardTitle className="text-2xl">{assessment.roleName} Assessment</CardTitle>
              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold">
@@ -208,7 +208,7 @@ const AssessmentRunner = () => {
           </CardContent>
         )}
 
-        <CardFooter className="flex justify-between border-t pt-6">
+        <CardFooter className="flex justify-between border-t pt-6 sticky bottom-0 bg-card/80 backdrop-blur-sm z-10">
             <Button variant="outline" onClick={prevQuestion} disabled={currentQuestionIndex === 0 || isSubmitting}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
