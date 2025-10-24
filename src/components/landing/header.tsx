@@ -77,7 +77,7 @@ export function Header() {
                   <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
                 </DropdownMenuItem>
                  <DropdownMenuItem asChild>
-                  <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Assessments</Link>
+                  <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Skill Assessment</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>

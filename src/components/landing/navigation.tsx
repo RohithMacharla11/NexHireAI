@@ -16,7 +16,7 @@ export function Navigation() {
             Dashboard
           </Link>
           <Link href="/skill-assessment" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-            Assessments
+            Skill Assessment
           </Link>
         </>
       ) : (

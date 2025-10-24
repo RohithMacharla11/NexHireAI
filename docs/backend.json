@@ -48,13 +48,12 @@
             }
           }
         },
-        "difficulty": { "type": "number" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
         "timeLimit": { "type": "number" },
         "tags": { "type": "array", "items": { "type": "string" } },
-        "maxScore": { "type": "number" },
         "skill": { "type": "string" }
       },
-      "required": ["questionText", "type", "difficulty", "timeLimit", "maxScore", "skill"]
+      "required": ["questionText", "type", "difficulty", "timeLimit", "skill"]
     },
     "AssessmentAttempt": {
       "title": "User Assessment Attempt",
@@ -62,9 +61,10 @@
       "type": "object",
       "properties": {
         "roleId": { "type": "string" },
+        "assessmentId": { "type": "string" },
         "startedAt": { "type": "number" },
         "submittedAt": { "type": "number" },
-        "questions": {
+        "responses": {
           "type": "array",
           "items": { "$ref": "#/backend/entities/UserResponse" }
         },
@@ -72,7 +72,7 @@
         "skillScores": { "type": "object" },
         "aiFeedback": { "type": "string" }
       },
-      "required": ["roleId", "startedAt"]
+      "required": ["roleId", "startedAt", "assessmentId"]
     },
     "UserResponse": {
       "title": "User Response",
@@ -81,7 +81,7 @@
       "properties": {
         "questionId": { "type": "string" },
         "skill": { "type": "string" },
-        "difficulty": { "type": "number" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
         "answer": { "type": "string" },
         "code": { "type": "string" },
         "timeTaken": { "type": "number" },
@@ -89,7 +89,7 @@
         "testCasesPassed": { "type": "number" },
         "totalTestCases": { "type": "number" }
       },
-      "required": ["questionId", "timeTaken"]
+      "required": ["questionId", "timeTaken", "difficulty"]
     }
   },
   "auth": {
