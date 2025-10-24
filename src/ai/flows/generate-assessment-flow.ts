@@ -21,7 +21,6 @@ const GeneratedQuestionSchema = z.object({
   testCases: z.array(z.object({ input: z.string(), expectedOutput: z.string() })).optional(),
   difficulty: z.enum(['Easy', 'Medium', 'Hard']),
   timeLimit: z.number().describe('Time limit in seconds'),
-  starterCode: z.string().optional(),
 });
 
 // Zod schema for questions for a SINGLE skill
@@ -77,7 +76,7 @@ const generateAssessmentFlow = ai.defineFlow(
           - Create a mix of difficulties: 2 Easy, 2 Medium, 1 Hard.
           - For MCQs, create scenario-based questions, not simple definitions. Provide 4 options. 'correctAnswer' must be the full text of the correct option.
           - For Short Answer, ask for one-line code fixes or brief conceptual comparisons. 'correctAnswer' should be the ideal answer.
-          - For Coding, provide a clear problem statement and 3-5 test cases. 'starterCode' is optional. The 'correctAnswer' field is not needed for coding questions.
+          - For Coding, provide a clear problem statement and 3-5 test cases. The 'correctAnswer' field is not needed for coding questions.
           - Ensure all fields in the schema are present for each question, even if optional (e.g., use 'options: []' for non-mcq).
 
           Adhere strictly to the JSON output schema, which is an array of 5 question objects. Your response MUST be a valid JSON array.`,
