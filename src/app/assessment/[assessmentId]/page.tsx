@@ -77,7 +77,7 @@ const AssessmentRunner = () => {
   }, [startTime, assessment]);
 
   const handleSubmit = () => {
-    if (!user || !assessment) {
+    if (!user || !assessment || !startTime) {
         toast({ title: "Error", description: "User or assessment data not found.", variant: "destructive" });
         return;
     }
@@ -87,17 +87,16 @@ const AssessmentRunner = () => {
 
       const finalResponses = Object.values(responses).map(response => ({
           ...response,
-          timeTaken: (Date.now() - startTime!) / 1000 / assessment.questions.length, // Approximate
-      })) as UserResponse[];
+          timeTaken: (Date.now() - startTime) / 1000 / assessment.questions.length, // Approximate
+      }));
       
-      const attemptShell: AssessmentAttempt = {
-          id: assessment.id,
+      const attemptShell = {
           userId: user.id,
           assessmentId: assessment.id,
           roleId: assessment.roleId,
-          startedAt: startTime!,
+          startedAt: startTime,
           submittedAt: Date.now(),
-          responses: finalResponses,
+          responses: finalResponses as UserResponse[],
           questions: assessment.questions, // Pass full question data for scoring
       };
 
@@ -106,6 +105,7 @@ const AssessmentRunner = () => {
           const scoredResult = await scoreAssessment(attemptShell);
           
           const finalAttempt: AssessmentAttempt = {
+            id: assessment.id,
             ...attemptShell,
             ...scoredResult,
           };

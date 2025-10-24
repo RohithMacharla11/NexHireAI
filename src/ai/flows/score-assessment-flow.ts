@@ -140,7 +140,7 @@ export const scoreAssessmentFlow = ai.defineFlow(
 );
 
 
-export async function scoreAssessment(attempt: AssessmentAttempt): Promise<z.infer<typeof ScoredFieldsSchema>> {
+export async function scoreAssessment(attempt: Omit<AssessmentAttempt, 'id'> & { questions: Question[] }): Promise<z.infer<typeof ScoredFieldsSchema>> {
   const scoredData = await scoreAssessmentFlow(attempt);
   return scoredData;
 }
