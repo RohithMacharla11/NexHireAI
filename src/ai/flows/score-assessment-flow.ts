@@ -9,11 +9,6 @@ import { z } from 'zod';
 import type { AssessmentAttempt, Question, UserResponse } from '@/lib/types';
 
 
-// Define the input schema, which is a partial AssessmentAttempt
-// We include the full questions here for the AI to reference during scoring.
-const ScoreAssessmentInputSchema = z.custom<Omit<AssessmentAttempt, 'id'> & { questions: Question[] }>();
-
-
 // This is the output of the flow, containing only the scored fields.
 const ScoredFieldsSchema = z.object({
   finalScore: z.number(),
@@ -22,23 +17,28 @@ const ScoredFieldsSchema = z.object({
   responses: z.array(z.custom<UserResponse>()),
 });
 
-
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// New schema for the batched scoring of short answers
-const ShortAnswerScoresSchema = z.record(z.string(), z.number().min(0).max(1));
+// New schema for the batched scoring of short answers.
+// The AI will return an array of objects, each with a questionId and a score.
+const ShortAnswerScoresSchema = z.array(
+    z.object({
+        questionId: z.string().describe("The ID of the question being scored."),
+        score: z.number().min(0).max(1).describe("The semantic similarity score from 0.0 to 1.0.")
+    })
+);
+
 
 export const scoreAssessmentFlow = ai.defineFlow(
   {
     name: 'scoreAssessmentFlow',
-    inputSchema: ScoreAssessmentInputSchema,
+    inputSchema: z.custom<Omit<AssessmentAttempt, 'id' | 'finalScore' | 'skillScores' | 'aiFeedback'> & { questions: Question[] }>(),
     outputSchema: ScoredFieldsSchema,
   },
   async (attempt) => {
     const { questions, responses } = attempt;
     
-    // Map difficulty to a weight
-    const difficultyWeightMap = { Easy: 1.0, Medium: 1.5, Hard: 2.0 };
+    const difficultyWeightMap: Record<string, number> = { Easy: 1.0, Medium: 1.5, Hard: 2.0 };
     let totalMaxPossibleScore = 0;
     let totalUserEarnedScore = 0;
 
@@ -47,10 +47,11 @@ export const scoreAssessmentFlow = ai.defineFlow(
     // --- BATCH SCORING FOR SHORT ANSWERS ---
     const shortAnswerResponses = responses.filter(r => {
         const q = questions.find(q => q.id === r.questionId);
+        // Only score non-exact matches that have content
         return q?.type === 'short' && r.answer && r.answer.trim().toLowerCase() !== q.correctAnswer?.trim().toLowerCase();
     });
 
-    let shortAnswerScores: z.infer<typeof ShortAnswerScoresSchema> = {};
+    const scoresMap: Record<string, number> = {};
 
     if (shortAnswerResponses.length > 0) {
         const scoringPayload = shortAnswerResponses.map(r => {
@@ -63,22 +64,26 @@ export const scoreAssessmentFlow = ai.defineFlow(
         });
         
         await wait(1500); // A single wait before the batch call
-        const { output } = await ai.generate({
-            prompt: `You are an expert AI grader. Evaluate a batch of user answers against their correct counterparts. For each item, provide a semantic similarity score from 0.0 (completely wrong) to 1.0 (perfectly correct). Respond with a JSON object mapping each questionId to its score.
+        const { output: shortAnswerScores } = await ai.generate({
+            prompt: `You are an expert AI grader. Evaluate a batch of user answers against their correct counterparts. For each item, provide a semantic similarity score from 0.0 (completely wrong) to 1.0 (perfectly correct). Respond with a JSON array of objects, where each object has a "questionId" and a "score".
             
             Batch to Score:
             ${JSON.stringify(scoringPayload, null, 2)}
             
-            Your response MUST be a valid JSON object of the format: { "questionId": score, ... }`,
+            Your response MUST be a valid JSON array matching the specified schema.`,
+            output: {
+                schema: ShortAnswerScoresSchema,
+            },
             config: { 
               temperature: 0.2,
-              response_mime_type: 'application/json',
-              response_schema: ShortAnswerScoresSchema,
             }
         });
         
-        if (output) {
-            shortAnswerScores = output;
+        // Convert the array of scores into a simple map for easy lookup
+        if (shortAnswerScores) {
+            for (const item of shortAnswerScores) {
+                scoresMap[item.questionId] = item.score;
+            }
         }
     }
     // --- END BATCH SCORING ---
@@ -93,9 +98,12 @@ export const scoreAssessmentFlow = ai.defineFlow(
       }
 
       const maxQuestionScore = difficultyWeightMap[question.difficulty];
+      if (!maxQuestionScore) {
+          console.warn(`No difficulty weight found for difficulty: ${question.difficulty}`);
+          continue;
+      }
       totalMaxPossibleScore += maxQuestionScore;
 
-      // Initialize skill score buckets
       const skillKey = question.skill || 'general';
       if (!skillScores[skillKey]) {
         skillScores[skillKey] = { earned: 0, max: 0 };
@@ -112,8 +120,8 @@ export const scoreAssessmentFlow = ai.defineFlow(
       else if (question.type === 'short') {
          if (response.answer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()) {
             correctnessFactor = 1;
-         } else if (response.answer && shortAnswerScores[response.questionId] !== undefined) {
-             correctnessFactor = shortAnswerScores[response.questionId];
+         } else if (response.answer && scoresMap[response.questionId] !== undefined) {
+             correctnessFactor = scoresMap[response.questionId];
          } else {
              correctnessFactor = 0; // No answer or scoring failed
          }
