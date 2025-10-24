@@ -76,15 +76,21 @@ export const scoreAssessmentFlow = ai.defineFlow(
       else if (question.type === 'short') {
          if (response.answer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()) {
             correctnessFactor = 1;
-         } else {
-             // Wait for 1 second before making the API call to avoid rate limiting
-             await wait(1000); 
+         } else if (response.answer) { // Only call AI if there is an answer
+             await wait(1000); // Wait for 1 second before making the API call to avoid rate limiting
              const { output: semanticScore } = await ai.generate({
                 prompt: `Evaluate if the user's answer is semantically equivalent to the correct answer. User Answer: "${response.answer}". Correct Answer: "${question.correctAnswer}". Respond with a single number between 0.0 (completely wrong) and 1.0 (perfectly correct).`,
                 output: { schema: z.number().min(0).max(1) },
                 config: { temperature: 0.2 }
             });
-            correctnessFactor = output || 0;
+            // Handle null case from AI
+            if (typeof semanticScore === 'number') {
+                correctnessFactor = semanticScore;
+            } else {
+                correctnessFactor = 0; // Default to 0 if AI fails to return a number
+            }
+         } else {
+             correctnessFactor = 0; // No answer provided
          }
          evaluatedResponse.isCorrect = correctnessFactor > 0.7; // Consider it "correct" if it's mostly right
       }
