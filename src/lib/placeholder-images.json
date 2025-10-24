@@ -3,50 +3,74 @@
     {
       "id": "avatar1",
       "description": "Avatar for Alex Doe",
-      "imageUrl": "https://picsum.photos/seed/1/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjEyMjc5NjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "avatar2",
       "description": "Avatar for Brenda Smith",
-      "imageUrl": "https://picsum.photos/seed/2/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MTI1ODc2Mnww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "woman portrait"
     },
     {
       "id": "avatar3",
       "description": "Avatar for Charles Brown",
-      "imageUrl": "https://picsum.photos/seed/3/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjEyNTU5NTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man portrait"
     },
     {
       "id": "avatar4",
       "description": "Avatar for Dana Scully",
-      "imageUrl": "https://picsum.photos/seed/4/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1581065178047-8ee15951ede6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxwcm9mZXNzaW9uYWwlMjB3b21hbnxlbnwwfHx8fDE3NjEyMjE2MTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "professional woman"
     },
     {
       "id": "avatar5",
       "description": "Avatar for Fox Mulder",
-      "imageUrl": "https://picsum.photos/seed/5/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwcm9mZXNzaW9uYWwlMjBtYW58ZW58MHx8fHwxNzYxMTY2Mzk4fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "professional man"
     },
     {
       "id": "avatar6",
       "description": "Avatar for Walter Skinner",
-      "imageUrl": "https://picsum.photos/seed/6/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1590697442615-a381b5b557c7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxvbGRlciUyMG1hbnxlbnwwfHx8fDE3NjEyMzg5NDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "older man"
     },
     {
       "id": "avatar7",
       "description": "Avatar for Monica Reyes",
-      "imageUrl": "https://picsum.photos/seed/7/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1618938700817-fe48bd93f20b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzbWlsaW5nJTIwd29tYW58ZW58MHx8fHwxNzYxMTg3MzcxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "smiling woman"
     },
     {
       "id": "avatar8",
       "description": "Avatar for John Doggett",
-      "imageUrl": "https://picsum.photos/seed/8/200/200",
+      "imageUrl": "https://images.unsplash.com/photo-1706563949634-83be9597a2a1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxzZXJpb3VzJTIwbWFufGVufDB8fHx8MTc2MTE5MzE3OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "serious man"
+    },
+    {
+      "id": "feature1",
+      "description": "Feature image for Smart Automation",
+      "imageUrl": "https://images.unsplash.com/photo-1613917037055-6608e6ff2254?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Z2xvd2luZyUyMGNpcmN1aXR8ZW58MHx8fHwxNzYxMTk4OTA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "glowing circuit"
+    },
+    {
+      "id": "feature2",
+      "description": "Feature image for Secure Sync",
+      "imageUrl": "https://images.unsplash.com/photo-1697382608786-bcf4c113b86e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxkaWdpdGFsJTIwbG9ja3xlbnwwfHx8fDE3NjEyNzYwODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "digital lock"
+    },
+    {
+      "id": "feature3",
+      "description": "Feature image for Real-Time Insights",
+      "imageUrl": "https://images.unsplash.com/photo-1631259352402-c6b7f0625df3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Z2xvd2luZyUyMGdyYXBofGVufDB8fHx8MTc2MTI4ODg2NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "glowing graph"
+    },
+    {
+      "id": "feature4",
+      "description": "Feature image for AI Assistance",
+      "imageUrl": "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxyb2JvdCUyMGh1bWFufGVufDB8fHx8MTc2MTI3NjE5M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "robot human"
     }
   ]
 }

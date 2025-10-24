@@ -1,27 +1,29 @@
+
 'use client';
 
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const testimonials = [
   {
     quote: "This platform has revolutionized our workflow. The AI assistance is a game-changer!",
     name: "Alex Doe",
     title: "CEO, Innovate Inc.",
-    avatar: "https://picsum.photos/seed/1/200/200"
+    avatarId: "avatar1"
   },
   {
     quote: "I've never been more organized. The real-time sync is flawless and incredibly reliable.",
     name: "Brenda Smith",
     title: "Project Manager, Solutions Co.",
-    avatar: "https://picsum.photos/seed/2/200/200"
+    avatarId: "avatar2"
   },
   {
     quote: "The insights I get from the analytics dashboard are invaluable for my business decisions.",
     name: "Charles Brown",
     title: "Founder, DataDriven LLC",
-    avatar: "https://picsum.photos/seed/3/200/200"
+    avatarId: "avatar3"
   },
 ];
 
@@ -62,14 +64,16 @@ export function Testimonials() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
         >
-          {testimonials.map((testimonial, index) => (
+          {testimonials.map((testimonial, index) => {
+            const image = PlaceHolderImages.find(img => img.id === testimonial.avatarId);
+            return (
             <motion.div key={index} variants={itemVariants}>
               <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg">
                 <CardContent className="p-6">
                   <p className="text-foreground/80 mb-6">"{testimonial.quote}"</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
+                      <AvatarImage src={image?.imageUrl} alt={testimonial.name} data-ai-hint={image?.imageHint} />
                       <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
@@ -80,7 +84,7 @@ export function Testimonials() {
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
+          )})}
         </motion.div>
       </div>
     </section>
