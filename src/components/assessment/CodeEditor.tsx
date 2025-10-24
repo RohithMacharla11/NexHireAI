@@ -77,7 +77,6 @@ export function CodeEditor({ question, code, onCodeChange, language, onLanguageC
 
     return (
         <CardContent className="p-0 flex flex-col">
-            {/* Top Panel: Problem Statement & Test Cases */}
             <div className="p-6">
                 <h2 className="text-xl font-semibold mb-4">{question.questionText}</h2>
                 <Tabs defaultValue="testcases" value={activeTab} onValueChange={setActiveTab}>
@@ -114,9 +113,9 @@ export function CodeEditor({ question, code, onCodeChange, language, onLanguageC
                                                 </div>
                                             </CardTitle>
                                         </CardHeader>
-                                        <CardContent className="p-3 pt-0 text-xs">
-                                            <p><span className="font-semibold">Output:</span> <code className="bg-muted/50 px-1 rounded">{result.output}</code></p>
-                                            {result.status !== 'Passed' && <p><span className="font-semibold">Expected:</span> <code className="bg-muted/50 px-1 rounded">{result.expectedOutput}</code></p>}
+                                        <CardContent className="p-3 pt-0 text-xs font-mono space-y-1">
+                                            <p><span className="font-sans font-semibold text-muted-foreground">Output:</span> <code className="bg-muted/50 px-1 rounded">{result.output}</code></p>
+                                            {result.status !== 'Passed' && <p><span className="font-sans font-semibold text-muted-foreground">Expected:</span> <code className="bg-muted/50 px-1 rounded">{result.expectedOutput}</code></p>}
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -130,7 +129,6 @@ export function CodeEditor({ question, code, onCodeChange, language, onLanguageC
                 </Tabs>
             </div>
 
-            {/* Bottom Panel: Code Editor */}
             <div className="h-[60vh] flex flex-col border-t">
                 <div className="flex-shrink-0 p-2 border-b flex justify-between items-center bg-background/80 sticky top-[80px] z-10">
                     <Select value={language} onValueChange={onLanguageChange}>

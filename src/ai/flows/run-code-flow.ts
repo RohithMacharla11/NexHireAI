@@ -25,7 +25,7 @@ export type RunCodeInput = z.infer<typeof RunCodeInputSchema>;
 const SingleTestCaseResultSchema = z.object({
     status: z.enum(['Passed', 'Failed', 'Error', 'Time Limit Exceeded']).describe("The result status of the test case."),
     output: z.string().describe("The actual output from the code execution."),
-    expectedOutput: z.string().optional().describe("The expected output for comparison."),
+    expectedOutput: z.string().optional().describe("The expected output for comparison. This should be present if the status is 'Failed' or 'Error'."),
     time: z.string().describe("Simulated execution time, e.g., '52ms'."),
     memory: z.string().describe("Simulated memory usage, e.g., '1.4MB'."),
 });
@@ -56,6 +56,8 @@ const runCodeFlow = ai.defineFlow(
       For each test case, determine the status ('Passed', 'Failed', 'Error', or 'Time Limit Exceeded').
       If the code has syntax errors or would likely cause a runtime error, set the status to 'Error' and provide a brief error message in the 'output' field.
       Simulate a realistic execution time and memory usage for each test case.
+      
+      **Crucially, for every test case, you must include the original 'expectedOutput' in the result object.**
 
       Test Cases:
       {{#each testCases}}
