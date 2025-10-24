@@ -56,7 +56,15 @@ export interface AssessmentAttempt {
     // --- Post-Submission Fields ---
     finalScore?: number;
     skillScores?: Record<string, number | 'Not available'>; 
-    aiFeedback?: string;
+    aiFeedback?: {
+      overall: string;
+      skills: {
+        skill: string;
+        score: number | string;
+        advice: string;
+      }[];
+      suggestions: string[];
+    } | null;
     questions?: Question[]; // Only used for scoring context, not saved
 }
 

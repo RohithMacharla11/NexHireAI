@@ -2,7 +2,7 @@
 'use server';
 /**
  * @fileOverview A flow to score a completed assessment, calculate scores, and generate feedback.
- * This flow now follows a robust, multi-stage process to minimize AI calls and prevent errors.
+ * This flow follows a robust, multi-stage process to minimize AI calls and prevent errors.
  */
 
 import { ai } from '@/ai/genkit';
@@ -63,14 +63,14 @@ export const scoreAssessmentFlow = ai.defineFlow(
         const userAnswer = toSafeString(q.answer).trim().toLowerCase();
         const correctAnswer = toSafeString(q.correctAnswer).trim().toLowerCase();
         const earned = (userAnswer === "" ? 0 : (userAnswer === correctAnswer ? 1 : 0));
-        return { questionId: q.id, skill: q.skill, earned, max: 1, isCorrect: earned === 1 };
+        return { questionId: q.id!, skill: q.skill, earned, max: 1, isCorrect: earned === 1 };
     });
 
     const codingScores = codingQs.map(q => {
         const passed = Number(q.testCasesPassed ?? 0);
-        const total = Number(q.totalTestCases ?? 1); // Avoid division by zero
+        const total = Number(q.totalTestCases ?? (q.testCases?.length || 0)) || 0;
         const earned = total > 0 ? Math.max(0, Math.min(1, passed / total)) : 0;
-        return { questionId: q.id, skill: q.skill, earned, max: 1, isCorrect: earned === 1, passed, total };
+        return { questionId: q.id!, skill: q.skill, earned, max: 1, isCorrect: earned === 1, passed, total };
     });
 
     // --- 3. Score short answers via AI (Prompt A), only if they exist ---
@@ -85,21 +85,46 @@ export const scoreAssessmentFlow = ai.defineFlow(
             userAnswer: toSafeString(q.answer!),
         }));
 
-        const { output: aiShortScores } = await ai.generate({
-            prompt: `You are a strict grader. Grade the user answers in the SHORT_ANSWERS array.
-            SHORT_ANSWERS: ${JSON.stringify(shortPayload)}
-            
-            Return a JSON array where each element is {"questionId": "<string>", "score": <integer 0-100>, "explain": "<string>"}. Evaluate concisely. If user answer exactly matches, score is 100. Output ONLY the valid JSON array.`,
-            output: { schema: ShortAnswerScoreSchema },
-            config: { temperature: 0.2 },
-        });
+        const promptA = `You are a strict grader for short-answer questions.
+Input: a JSON array named SHORT_ANSWERS where each element is:
+{
+  "questionId": "<string>",
+  "questionText": "<string>",
+  "correctAnswer": "<string>",
+  "userAnswer": "<string>"
+}
+Return: a JSON array with the same length where each element is:
+{
+  "questionId": "<string>",
+  "score": <number>,
+  "explain": "<short explanation (max 40 words)>"
+}
+Requirements:
+- Score MUST be an integer between 0 and 100.
+- If userAnswer exactly matches correctAnswer (case-insensitive, trimmed), return score 100.
+- Otherwise evaluate concisely and assign a proportionate integer score.
+- Output ONLY valid JSON array — nothing else.
 
+SHORT_ANSWERS: ${JSON.stringify(shortPayload)}
+`;
+        let aiShortScores: z.infer<typeof ShortAnswerScoreSchema> | null = null;
+        try {
+            const { output } = await ai.generate({
+                prompt: promptA,
+                output: { schema: ShortAnswerScoreSchema },
+                config: { temperature: 0.2 },
+            });
+            aiShortScores = output;
+        } catch (e) {
+            console.error("AI call for short answer scoring failed:", e);
+        }
+        
         if (aiShortScores) {
             const shortScoresMap = new Map(aiShortScores.map(s => [s.questionId, s.score]));
             shortAnswerScores = shortQs.map(q => {
-                const score = shortScoresMap.get(q.id) ?? 0;
+                const score = shortScoresMap.get(q.id!) ?? 0;
                 return {
-                    questionId: q.id,
+                    questionId: q.id!,
                     skill: q.skill,
                     earned: score / 100, // Normalize to 0-1
                     max: 1,
@@ -131,10 +156,10 @@ export const scoreAssessmentFlow = ai.defineFlow(
 
     // --- 6. Build summary strings for final feedback prompt (Prompt B) ---
     const mcqSummary = `Total MCQs: ${mcqs.length}, Correct: ${mcqScores.filter(s => s.earned === 1).length}`;
-    const avgCodingPassRate = codingScores.length > 0
+    const codingAvgPassRate = codingScores.length > 0
         ? Math.round((codingScores.reduce((sum, q) => sum + (q.passed / (q.total || 1)), 0) / codingScores.length) * 100)
         : 0;
-    const codingSummary = `Total coding questions: ${codingScores.length}, avg_pass_rate: ${avgCodingPassRate}%`;
+    const codingSummary = `Total coding questions: ${codingScores.length}, avg_pass_rate: ${codingAvgPassRate}%`;
 
     const finalPromptText = `FINAL_SKILL_SCORES: ${JSON.stringify(finalSkillScoresForPrompt)}
 MCQ_SUMMARY: ${mcqSummary}
@@ -162,19 +187,24 @@ Rules:
 - Scores that are numbers must be numbers (not strings).
 - Output ONLY valid JSON — nothing else.
 `;
-
-    const { output: aiFeedback } = await ai.generate({
-        prompt: finalPromptText,
-        output: { schema: FinalFeedbackSchema },
-        config: { temperature: 0.8 },
-    });
+    let aiFeedback: z.infer<typeof FinalFeedbackSchema> | null = null;
+    try {
+        const { output } = await ai.generate({
+            prompt: finalPromptText,
+            output: { schema: FinalFeedbackSchema },
+            config: { temperature: 0.8 },
+        });
+        aiFeedback = output;
+    } catch(e) {
+        console.error("AI call for final feedback failed:", e);
+    }
+    
 
     // --- 7. Assemble final response object ---
     const totalEarned = [...mcqScores, ...codingScores, ...shortAnswerScores].reduce((acc, s) => acc + s.earned, 0);
     const totalMax = [...mcqScores, ...codingScores, ...shortAnswerScores].reduce((acc, s) => acc + s.max, 0);
     const finalScore = totalMax > 0 ? Math.round((totalEarned / totalMax) * 100) : 0;
-    const feedbackString = aiFeedback ? aiFeedback.overall + '\n\n' + aiFeedback.suggestions.map(s => `- ${s}`).join('\n') : 'Feedback could not be generated at this time.';
-
+    
     // Combine all correctness flags into a map for easy lookup
     const correctnessMap = new Map<string, boolean>();
     [...mcqScores, ...codingScores, ...shortAnswerScores].forEach(s => {
@@ -192,7 +222,7 @@ Rules:
       responses: evaluatedResponses,
       finalScore,
       skillScores: finalSkillScores,
-      aiFeedback: feedbackString,
+      aiFeedback,
     };
   }
 );

@@ -54,7 +54,9 @@ export default function DashboardPage() {
 
   const skillScoresData = useMemo(() => {
     if (!latestAttempt?.skillScores) return [];
-    return Object.entries(latestAttempt.skillScores).map(([skill, score]) => ({
+    return Object.entries(latestAttempt.skillScores)
+      .filter(([, score]) => typeof score === 'number')
+      .map(([skill, score]) => ({
         subject: skill.charAt(0).toUpperCase() + skill.slice(1),
         A: score,
         fullMark: 100,
@@ -149,8 +151,15 @@ export default function DashboardPage() {
                                             <CardHeader>
                                                 <CardTitle className="text-base flex items-center gap-2"><BrainCircuit /> AI Feedback</CardTitle>
                                             </CardHeader>
-                                            <CardContent>
-                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{latestAttempt.aiFeedback}</p>
+                                            <CardContent className="text-sm text-muted-foreground">
+                                                {latestAttempt.aiFeedback ? (
+                                                    <>
+                                                        <p className="font-semibold">{latestAttempt.aiFeedback.overall}</p>
+                                                        <ul className="mt-2 space-y-1 list-disc list-inside">
+                                                            {latestAttempt.aiFeedback.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                                                        </ul>
+                                                    </>
+                                                ) : <p>AI feedback is being generated or was not available.</p>}
                                             </CardContent>
                                         </Card>
                                     </div>
