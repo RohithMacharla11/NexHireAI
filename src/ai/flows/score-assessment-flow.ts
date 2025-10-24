@@ -30,6 +30,8 @@ const ScoredAssessmentOutputSchema = z.object({
 });
 
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const scoreAssessmentFlow = ai.defineFlow(
   {
     name: 'scoreAssessmentFlow',
@@ -46,9 +48,13 @@ export const scoreAssessmentFlow = ai.defineFlow(
 
     const skillScores: Record<string, { earned: number, max: number }> = {};
 
-    const evaluatedResponses = await Promise.all(responses.map(async (response) => {
+    const evaluatedResponses: UserResponse[] = [];
+    for (const response of responses) {
       const question = questions.find(q => q.id === response.questionId);
-      if (!question) return { ...response, isCorrect: false }; // Should not happen
+      if (!question) {
+        evaluatedResponses.push({ ...response, isCorrect: false });
+        continue;
+      }
 
       const maxQuestionScore = difficultyWeightMap[question.difficulty];
       totalMaxPossibleScore += maxQuestionScore;
@@ -71,6 +77,8 @@ export const scoreAssessmentFlow = ai.defineFlow(
          if (response.answer?.trim().toLowerCase() === question.correctAnswer?.trim().toLowerCase()) {
             correctnessFactor = 1;
          } else {
+             // Wait for 1 second before making the API call to avoid rate limiting
+             await wait(1000); 
              const { output: semanticScore } = await ai.generate({
                 prompt: `Evaluate if the user's answer is semantically equivalent to the correct answer. User Answer: "${response.answer}". Correct Answer: "${question.correctAnswer}". Respond with a single number between 0.0 (completely wrong) and 1.0 (perfectly correct).`,
                 output: { schema: z.number().min(0).max(1) },
@@ -92,9 +100,9 @@ export const scoreAssessmentFlow = ai.defineFlow(
       const earnedScore = correctnessFactor * maxQuestionScore;
       totalUserEarnedScore += earnedScore;
       skillScores[skillKey].earned += earnedScore;
-
-      return evaluatedResponse;
-    }));
+      
+      evaluatedResponses.push(evaluatedResponse);
+    }
 
     // Calculate final scores
     const finalScore = totalMaxPossibleScore > 0 ? (totalUserEarnedScore / totalMaxPossibleScore) * 100 : 0;
@@ -106,6 +114,7 @@ export const scoreAssessmentFlow = ai.defineFlow(
     }
     
     // Generate AI Feedback
+     await wait(1000); // Add a small delay before the final call
      const { output: aiFeedback } = await ai.generate({
         prompt: `A candidate has just completed an assessment. Their final score is ${finalScore.toFixed(2)}/100.
         Their performance by skill was: ${JSON.stringify(finalSkillScores)}.

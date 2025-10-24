@@ -36,6 +36,7 @@ const AssessmentRunner = () => {
     prevQuestion,
     setResponse,
     reset,
+    isHydrated,
   } = useAssessmentStore();
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -44,15 +45,14 @@ const AssessmentRunner = () => {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
+      return;
     }
-    if (!assessment) {
-      // Maybe they refreshed the page. Send them back.
-      if (!authLoading && user) { // only redirect if we are sure we are logged in
-         toast({ title: "Assessment session not found.", description: "Please start a new assessment.", variant: "destructive" });
-         router.push('/skill-assessment');
-      }
+    // Only check for assessment after the store has been hydrated from localStorage
+    if (isHydrated && !assessment) {
+      toast({ title: "Assessment session not found.", description: "Please start a new assessment.", variant: "destructive" });
+      router.push('/skill-assessment');
     }
-  }, [user, authLoading, router, assessment, toast]);
+  }, [user, authLoading, router, assessment, toast, isHydrated]);
 
   // Timer logic
   useEffect(() => {
@@ -118,13 +118,17 @@ const AssessmentRunner = () => {
 
       } catch (error) {
           console.error("Error submitting and scoring assessment:", error);
-          toast({ title: "Submission Failed", description: (error as Error).message || "Could not save and score your assessment.", variant: "destructive" });
+          const errorMessage = (error as Error).message || "Could not save and score your assessment.";
+          const userFriendlyMessage = errorMessage.includes("429") 
+            ? "Submission failed due to high traffic. Please wait a moment and try again."
+            : errorMessage;
+          toast({ title: "Submission Failed", description: userFriendlyMessage, variant: "destructive" });
       }
     });
   };
 
 
-  if (authLoading || !assessment) {
+  if (authLoading || !assessment || !isHydrated) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -167,46 +171,48 @@ const AssessmentRunner = () => {
            </div>
         </CardHeader>
         
-        {currentQuestion.type === 'coding' ? (
-             <CodeEditor 
-                question={currentQuestion}
-                code={currentResponse?.code || currentQuestion.starterCode || ''}
-                onCodeChange={(code) => setResponse(currentQuestion.id, { code })}
-                language={currentResponse?.language || 'javascript'}
-                onLanguageChange={(lang) => setResponse(currentQuestion.id, { language: lang })}
-                executionResult={currentResponse?.executionResult}
-                onRunComplete={(result) => setResponse(currentQuestion.id, { executionResult: result })}
-             />
-        ) : (
-          <CardContent className="p-6 md:p-8 min-h-[400px]">
-              <h2 className="text-xl font-semibold mb-4">{currentQuestion.questionText}</h2>
+        <div className="overflow-y-auto">
+             {currentQuestion.type === 'coding' ? (
+                <CodeEditor 
+                    question={currentQuestion}
+                    code={currentResponse?.code || currentQuestion.starterCode || ''}
+                    onCodeChange={(code) => setResponse(currentQuestion.id, { code })}
+                    language={currentResponse?.language || 'javascript'}
+                    onLanguageChange={(lang) => setResponse(currentQuestion.id, { language: lang })}
+                    executionResult={currentResponse?.executionResult}
+                    onRunComplete={(result) => setResponse(currentQuestion.id, { executionResult: result })}
+                />
+            ) : (
+            <CardContent className="p-6 md:p-8 min-h-[400px]">
+                <h2 className="text-xl font-semibold mb-4">{currentQuestion.questionText}</h2>
 
-              {currentQuestion.type === 'mcq' && (
-                  <RadioGroup 
-                    onValueChange={handleAnswerChange}
-                    value={currentResponse?.answer}
-                    className="space-y-3"
-                  >
-                      {currentQuestion.options?.map((option, index) => (
-                          <div key={index} className="flex items-center space-x-2">
-                              <RadioGroupItem value={option} id={`option-${index}`} />
-                              <Label htmlFor={`option-${index}`} className="text-base cursor-pointer">{option}</Label>
-                          </div>
-                      ))}
-                  </RadioGroup>
-              )}
+                {currentQuestion.type === 'mcq' && (
+                    <RadioGroup 
+                        onValueChange={handleAnswerChange}
+                        value={currentResponse?.answer}
+                        className="space-y-3"
+                    >
+                        {currentQuestion.options?.map((option, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                                <RadioGroupItem value={option} id={`option-${index}`} />
+                                <Label htmlFor={`option-${index}`} className="text-base cursor-pointer">{option}</Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
+                )}
 
-              {currentQuestion.type === 'short' && (
-                   <Textarea 
-                      placeholder="Your answer..." 
-                      className="text-base"
-                      rows={6}
-                      value={currentResponse?.answer || ''}
-                      onChange={(e) => handleAnswerChange(e.target.value)}
-                   />
-              )}
-          </CardContent>
-        )}
+                {currentQuestion.type === 'short' && (
+                    <Textarea 
+                        placeholder="Your answer..." 
+                        className="text-base"
+                        rows={6}
+                        value={currentResponse?.answer || ''}
+                        onChange={(e) => handleAnswerChange(e.target.value)}
+                    />
+                )}
+            </CardContent>
+            )}
+        </div>
 
         <CardFooter className="flex justify-between border-t pt-6 sticky bottom-0 bg-card/80 backdrop-blur-sm z-10">
             <Button variant="outline" onClick={prevQuestion} disabled={currentQuestionIndex === 0 || isSubmitting}>
@@ -215,7 +221,7 @@ const AssessmentRunner = () => {
             
             {currentQuestionIndex === assessment.questions.length - 1 ? (
                 <Button onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="ml-2 h-4 w-4" />}
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                     {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
                 </Button>
             ) : (
