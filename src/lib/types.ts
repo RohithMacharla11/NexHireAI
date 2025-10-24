@@ -50,7 +50,6 @@ export interface AssessmentAttempt {
     userId: string;
     assessmentId: string;
     roleId: string;
-    roleName?: string;
     startedAt: number; // timestamp
     submittedAt?: number; // timestamp
     responses: UserResponse[];
@@ -58,8 +57,7 @@ export interface AssessmentAttempt {
     finalScore?: number;
     skillScores?: Record<string, number>; // e.g. { 'React': 85, 'CSS': 90 }
     aiFeedback?: string;
-    // --- Only used for scoring flow, not saved ---
-    questions?: Question[];
+    questions?: Question[]; // Only used for scoring flow, not saved
 }
 
 export interface User {

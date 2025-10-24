@@ -18,15 +18,15 @@ const ScoreAssessmentInputSchema = z.object({
   startedAt: z.number(),
   submittedAt: z.number(),
   responses: z.array(z.custom<UserResponse>()),
-  questions: z.array(z.custom<Question>()), // This was the missing piece
+  questions: z.array(z.custom<Question>()),
 });
 
-// This is just for the AI prompt's output validation, not the flow's final output
-const ScoredAssessmentOutputSchema = z.object({
-  finalScore: z.number().describe('The final, normalized score from 0-100.'),
-  skillScores: z.record(z.string(), z.number()).describe('A map of sub-skill names to their scores (0-100).'),
-  aiFeedback: z.string().describe('Concise, actionable feedback for the candidate, highlighting 1-2 strengths and 1-2 areas for improvement with specific suggestions.'),
-  responses: z.array(z.custom<UserResponse>()).describe('The original responses, updated with isCorrect, testCasesPassed, etc.'),
+// This is the output of the flow, containing only the scored fields.
+const ScoredFieldsSchema = z.object({
+  finalScore: z.number(),
+  skillScores: z.record(z.string(), z.number()),
+  aiFeedback: z.string(),
+  responses: z.array(z.custom<UserResponse>()),
 });
 
 
@@ -36,7 +36,7 @@ export const scoreAssessmentFlow = ai.defineFlow(
   {
     name: 'scoreAssessmentFlow',
     inputSchema: ScoreAssessmentInputSchema,
-    outputSchema: z.custom<AssessmentAttempt>(),
+    outputSchema: ScoredFieldsSchema,
   },
   async (attempt) => {
     const { questions, responses } = attempt;
@@ -130,23 +130,17 @@ export const scoreAssessmentFlow = ai.defineFlow(
         config: { temperature: 0.8 }
     });
 
-    const finalAttempt: AssessmentAttempt = {
-      ...attempt,
+    return {
       responses: evaluatedResponses,
       finalScore,
       skillScores: finalSkillScores,
       aiFeedback: aiFeedback || "Feedback could not be generated at this time.",
-    }
-    delete finalAttempt.questions; // Remove questions before returning
-    return finalAttempt;
+    };
   }
 );
 
 
-export async function scoreAssessment(attempt: Omit<AssessmentAttempt, 'id'> & { questions: Question[] }): Promise<AssessmentAttempt> {
+export async function scoreAssessment(attempt: AssessmentAttempt): Promise<z.infer<typeof ScoredFieldsSchema>> {
   const scoredData = await scoreAssessmentFlow(attempt);
-  return {
-    ...attempt,
-    ...scoredData,
-  };
+  return scoredData;
 }

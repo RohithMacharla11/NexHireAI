@@ -1,14 +1,15 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, query, orderBy, onSnapshot, Query } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Query, getDoc, doc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Trophy, BarChart, BrainCircuit } from 'lucide-react';
-import type { AssessmentAttempt } from '@/lib/types';
+import type { AssessmentAttempt, Role } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, PolarRadiusAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,7 @@ export default function DashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { firestore } = initializeFirebase();
-  const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
+  const [attempts, setAttempts] = useState<(AssessmentAttempt & { roleName?: string })[]>([]);
   const [isFetching, setIsFetching] = useState(true);
 
   useEffect(() => {
@@ -31,8 +32,14 @@ export default function DashboardPage() {
 
     const attemptsQuery: Query = query(collection(firestore, 'users', user.id, 'assessments'), orderBy('submittedAt', 'desc'));
     
-    const unsubscribe = onSnapshot(attemptsQuery, (querySnapshot) => {
-      const attemptsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AssessmentAttempt[];
+    const unsubscribe = onSnapshot(attemptsQuery, async (querySnapshot) => {
+      const attemptsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
+        const attempt = { id: docSnapshot.id, ...docSnapshot.data() } as AssessmentAttempt;
+        const roleDocRef = doc(firestore, 'roles', attempt.roleId);
+        const roleDoc = await getDoc(roleDocRef);
+        const roleName = roleDoc.exists() ? (roleDoc.data() as Role).name : 'Unknown Role';
+        return { ...attempt, roleName };
+      }));
       setAttempts(attemptsData);
       setIsFetching(false);
     }, (error) => {

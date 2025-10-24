@@ -85,22 +85,16 @@ const AssessmentRunner = () => {
     startSubmitting(async () => {
       toast({ title: "Submitting Assessment", description: "Evaluating your answers and generating feedback. Please wait." });
 
-      const finalResponses: UserResponse[] = assessment.questions.map(q => {
-        const response = responses[q.id] || {};
-        return {
-          questionId: q.id,
-          skill: q.skill,
-          difficulty: q.difficulty,
-          timeTaken: (Date.now() - startTime!) / 1000 / assessment.questions.length, // Approximate
+      const finalResponses = Object.values(responses).map(response => ({
           ...response,
-        } as UserResponse;
-      });
+          timeTaken: (Date.now() - startTime!) / 1000 / assessment.questions.length, // Approximate
+      })) as UserResponse[];
       
-      const attemptShell: Omit<AssessmentAttempt, 'id'> & { questions: Question[] } = {
+      const attemptShell: AssessmentAttempt = {
+          id: assessment.id,
           userId: user.id,
           assessmentId: assessment.id,
           roleId: assessment.roleId,
-          roleName: assessment.roleName,
           startedAt: startTime!,
           submittedAt: Date.now(),
           responses: finalResponses,
@@ -108,12 +102,18 @@ const AssessmentRunner = () => {
       };
 
       try {
-          // The scoreAssessment function returns the fully scored attempt
-          const scoredAttempt = await scoreAssessment(attemptShell);
+          // The scoreAssessment function returns the scored fields
+          const scoredResult = await scoreAssessment(attemptShell);
           
+          const finalAttempt: AssessmentAttempt = {
+            ...attemptShell,
+            ...scoredResult,
+          };
+          delete finalAttempt.questions; // Don't save questions to the attempt document
+
           // Now save the scored attempt to Firestore
           const attemptDocRef = doc(firestore, `users/${user.id}/assessments`, assessment.id);
-          await setDoc(attemptDocRef, scoredAttempt);
+          await setDoc(attemptDocRef, finalAttempt);
           
           toast({ title: "Assessment Submitted!", description: "Your results are now available on your dashboard." });
           reset();
