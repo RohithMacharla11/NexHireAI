@@ -77,9 +77,9 @@ export function CodeEditor({ question, code, onCodeChange, language, onLanguageC
 
     return (
         <CardContent className="p-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(80vh-180px)] max-h-[700px]">
-                {/* Left Panel: Problem Statement & Test Cases */}
-                <ScrollArea className="h-full">
+             <ScrollArea className="h-[calc(80vh-180px)] max-h-[700px]">
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                    {/* Left Panel: Problem Statement & Test Cases */}
                     <div className="p-6">
                         <h2 className="text-xl font-semibold mb-4">{question.questionText}</h2>
                         <Tabs defaultValue="testcases" value={activeTab} onValueChange={setActiveTab}>
@@ -131,43 +131,43 @@ export function CodeEditor({ question, code, onCodeChange, language, onLanguageC
                             </TabsContent>
                         </Tabs>
                     </div>
-                </ScrollArea>
 
-                {/* Right Panel: Code Editor */}
-                <div className="h-full flex flex-col border-l">
-                    <div className="flex-shrink-0 p-2 border-b flex justify-between items-center">
-                        <Select value={language} onValueChange={onLanguageChange}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select Language" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {languages.map(lang => (
-                                    <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    {/* Right Panel: Code Editor */}
+                    <div className="lg:h-full flex flex-col lg:border-l min-h-[500px]">
+                        <div className="flex-shrink-0 p-2 border-y lg:border-t-0 lg:border-b flex justify-between items-center">
+                            <Select value={language} onValueChange={onLanguageChange}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Select Language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {languages.map(lang => (
+                                        <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        <Button onClick={handleRunCode} disabled={isPending}>
-                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                            Run Code
-                        </Button>
-                    </div>
-                    <div className="flex-grow">
-                        <Editor
-                            height="100%"
-                            language={language}
-                            theme="vs-dark"
-                            value={code}
-                            onChange={(value) => onCodeChange(value || '')}
-                            options={{
-                                minimap: { enabled: false },
-                                fontSize: 14,
-                                wordWrap: 'on',
-                            }}
-                        />
+                            <Button onClick={handleRunCode} disabled={isPending}>
+                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                                Run Code
+                            </Button>
+                        </div>
+                        <div className="flex-grow">
+                            <Editor
+                                height="100%"
+                                language={language}
+                                theme="vs-dark"
+                                value={code}
+                                onChange={(value) => onCodeChange(value || '')}
+                                options={{
+                                    minimap: { enabled: false },
+                                    fontSize: 14,
+                                    wordWrap: 'on',
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
+            </ScrollArea>
         </CardContent>
     )
 }
