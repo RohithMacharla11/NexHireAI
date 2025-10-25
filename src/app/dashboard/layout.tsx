@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Sidebar, SidebarProvider, SidebarTrigger, SidebarInset, useSidebar } from "@/components/ui/sidebar";
@@ -41,7 +40,7 @@ export default function DashboardLayout({
   
   return (
     <SidebarProvider>
-        <Sidebar collapsible="icon" onHover="expand">
+        <Sidebar collapsible="icon">
             <div className="flex h-full flex-col">
                 <div className="flex h-14 items-center justify-between p-2 group-data-[collapsible=icon]:justify-center">
                     <div className="flex-1 group-data-[collapsible=icon]:hidden">
