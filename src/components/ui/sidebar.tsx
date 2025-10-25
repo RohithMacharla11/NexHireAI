@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -36,6 +37,7 @@ type SidebarContext = {
   toggleSidebar: () => void
   isHovering: boolean
   setIsHovering: (hovering: boolean) => void
+  isExpanded: boolean
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -118,6 +120,7 @@ const SidebarProvider = React.forwardRef<
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
+    const isExpanded = state === "expanded"
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
@@ -130,8 +133,9 @@ const SidebarProvider = React.forwardRef<
         toggleSidebar,
         isHovering,
         setIsHovering,
+        isExpanded,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, isHovering, setIsHovering]
+      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, isHovering, setIsHovering, isExpanded]
     )
 
     return (
@@ -146,7 +150,7 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+              "group/sidebar-wrapper",
               className
             )}
             ref={ref}
@@ -182,8 +186,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile, setIsHovering } = useSidebar()
-    const isExpanded = state === 'expanded';
+    const { isMobile, state, openMobile, setOpenMobile, setIsHovering, isExpanded } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -238,43 +241,20 @@ const Sidebar = React.forwardRef<
         ref={ref}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className={cn(
+            "group/sidebar hidden h-full md:flex flex-col text-sidebar-foreground bg-sidebar transition-all duration-300 ease-in-out",
+            state === 'expanded' ? "w-[--sidebar-width]" : "w-[--sidebar-width-icon]",
+            isHovering && state === 'collapsed' && "w-[--sidebar-width]",
+            className
+        )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
         data-hover={onHover === 'expand' ? true : undefined}
+        {...props}
       >
-        {/* This is what handles the sidebar gap on desktop */}
-        <div
-          className={cn(
-            "duration-200 relative h-svh w-[--sidebar-width-icon] bg-transparent transition-[width] ease-in-out",
-            "group-data-[state=expanded]:w-[--sidebar-width]",
-            "group-data-[hover=true]:group-data-[state=collapsed]:hover:w-[--sidebar-width]"
-          )}
-        />
-        <div
-          className={cn(
-            "duration-200 fixed inset-y-0 z-40 hidden h-svh w-[--sidebar-width-icon] transition-all ease-in-out md:flex",
-            "group-data-[state=expanded]:w-[--sidebar-width]",
-            "group-data-[hover=true]:group-data-[state=collapsed]:hover:w-[--sidebar-width]",
-            side === "left" ? "left-0" : "right-0",
-            variant === "floating" || variant === "inset" ? "p-2" : "",
-            className
-          )}
-          {...props}
-        >
-          <div
-            data-sidebar="sidebar"
-            className={cn("flex h-full w-full flex-col bg-sidebar transition-all duration-200", 
-               variant === "floating" || variant === "inset" ? "rounded-lg border border-sidebar-border shadow" : "border-sidebar-border",
-               side === "left" && variant === "sidebar" ? "border-r" : "",
-               side === "right" && variant === "sidebar" ? "border-l" : ""
-            )}
-          >
-            {children}
-          </div>
-        </div>
+        {children}
       </div>
     )
   }
