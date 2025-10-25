@@ -19,14 +19,16 @@ const navItems = [
 function DashboardHeader() {
   const { toggleSidebar } = useSidebar();
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-lg sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-lg sm:px-6">
        <div className="md:hidden">
          <Button variant="ghost" size="icon" onClick={toggleSidebar}>
             <PanelLeft />
             <span className="sr-only">Toggle Sidebar</span>
         </Button>
        </div>
-        {/* Can add breadcrumbs or other header content here */}
+       <div className="hidden md:block">
+          {/* Placeholder for Breadcrumbs or Page Title */}
+       </div>
     </header>
   );
 }
@@ -73,7 +75,7 @@ export default function DashboardLayout({
                 </div>
             </div>
         </Sidebar>
-        <div className="flex flex-col w-full">
+        <div className="flex flex-col w-full min-h-screen">
             <DashboardHeader />
             <SidebarInset>
                 {children}
