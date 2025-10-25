@@ -1,9 +1,8 @@
-
 'use client';
 
-import { usePathname } from 'next/navigation';
 import { Header } from '@/components/landing/header';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 export function AppContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -11,7 +10,7 @@ export function AppContent({ children }: { children: React.ReactNode }) {
 
   return (
       <div className="flex flex-col min-h-screen">
-          {!isDashboard && <Header />}
+          <Header />
           <main className={cn("flex-grow", isDashboard ? "flex" : "")}>
             {children}
           </main>
