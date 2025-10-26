@@ -2,9 +2,10 @@
 'use client';
 
 import { Sidebar, SidebarProvider } from "@/components/ui/sidebar";
-import { LayoutDashboard, History, Trophy, Bot, Star, BookOpen, User } from "lucide-react";
+import { LayoutDashboard, History, Trophy, Bot, Star, BookOpen, User, Shield } from "lucide-react";
 import { SidebarButton } from "@/components/dashboard/SidebarButton";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
   { href: "/dashboard", icon: <LayoutDashboard />, label: "Overview" },
@@ -21,6 +22,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   
   return (
     <SidebarProvider>
@@ -39,6 +41,15 @@ export default function DashboardLayout({
                             tooltip={item.label}
                         />
                         ))}
+                         {user?.role === 'admin' && (
+                           <SidebarButton
+                                href="/dashboard/admin"
+                                icon={<Shield />}
+                                label="Admin"
+                                isActive={pathname.startsWith('/dashboard/admin')}
+                                tooltip="Admin Panel"
+                            />
+                        )}
                     </div>
                 </div>
                 <div className="mt-auto">

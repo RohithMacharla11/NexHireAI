@@ -2,7 +2,7 @@
 # NexHireAI - AI-Powered Skill Assessments
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/firebase/firebase-studio/main/src/assets/logo.svg" alt="NexHireAI Logo" width="120">
+
   <h1 align="center">NexHireAI</h1>
   <p align="center">
     Unleash human potential with AI-powered skill assessments that go beyond the resume.
