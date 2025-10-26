@@ -1,4 +1,3 @@
-
 'use client';
 
 import { motion } from 'framer-motion';
@@ -8,21 +7,21 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const testimonials = [
   {
-    quote: "This platform has revolutionized our workflow. The AI assistance is a game-changer!",
+    quote: "NexHireAI's feedback was a game-changer. I found my weak spots in React and landed a better job in a month.",
     name: "Alex Doe",
-    title: "CEO, Innovate Inc.",
+    title: "Frontend Developer",
     avatarId: "avatar1"
   },
   {
-    quote: "I've never been more organized. The real-time sync is flawless and incredibly reliable.",
+    quote: "The Skill Portfolio is brilliant. I attached it to my resume and recruiters were instantly impressed.",
     name: "Brenda Smith",
-    title: "Project Manager, Solutions Co.",
+    title: "Data Science Student",
     avatarId: "avatar2"
   },
   {
-    quote: "The insights I get from the analytics dashboard are invaluable for my business decisions.",
+    quote: "I finally have a clear path to becoming an AI Engineer. The personalized learning plan is invaluable.",
     name: "Charles Brown",
-    title: "Founder, DataDriven LLC",
+    title: "Aspiring AI Engineer",
     avatarId: "avatar3"
   },
 ];
@@ -52,9 +51,9 @@ export function Testimonials() {
     <section className="py-16 sm:py-24">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Loved by Teams Everywhere</h2>
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Loved by Developers Everywhere</h2>
           <p className="mt-4 max-w-xl mx-auto text-muted-foreground md:text-lg">
-            Don't just take our word for it. Here's what our users have to say.
+            Don't just take our word for it. Here's how our users are leveling up their careers.
           </p>
         </div>
         <motion.div 

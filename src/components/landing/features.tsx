@@ -1,8 +1,7 @@
-
 'use client';
 
 import { motion } from 'framer-motion';
-import { BrainCircuit, Zap, BarChart, ShieldCheck, Briefcase } from 'lucide-react';
+import { BrainCircuit, Zap, BarChart, ShieldCheck, Briefcase, Star } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -11,25 +10,25 @@ const featuresData = [
   {
     icon: <Zap className="h-8 w-8 text-primary" />,
     title: 'Dynamic Assessments',
-    description: 'Create custom, role-specific tests in minutes. Our AI generates relevant questions for over 30 roles.',
+    description: 'Go beyond theory with hands-on tests for 30+ tech roles that adapt to your skill level.',
     imageId: 'feature1',
   },
   {
     icon: <BrainCircuit className="h-8 w-8 text-primary" />,
-    title: 'AI-Powered Scoring',
-    description: 'Instantly get deep insights into candidate skill gaps, code quality, and problem-solving abilities.',
+    title: 'AI-Powered Feedback',
+    description: 'Get instant, personalized feedback on your code, problem-solving, and overall performance.',
     imageId: 'feature4',
   },
   {
     icon: <BarChart className="h-8 w-8 text-primary" />,
-    title: 'Candidate Analytics',
-    description: 'Track candidate performance, benchmark against top performers, and build a high-quality talent pipeline.',
+    title: 'Growth Analytics',
+    description: 'Visualize your progress, identify skill gaps, and track your journey to mastery on your personal dashboard.',
     imageId: 'feature3',
   },
   {
-    icon: <Briefcase className="h-8 w-8 text-primary" />,
-    title: 'Realistic Code Editor',
-    description: 'Evaluate coding skills in a real-world environment with an integrated Monaco editor and AI-run test cases.',
+    icon: <Star className="h-8 w-8 text-primary" />,
+    title: 'Verified Skill Portfolio',
+    description: 'Build a portfolio of verified skills, badges, and scores that you can share with potential employers.',
     imageId: 'feature2',
   },
 ];
@@ -44,9 +43,9 @@ export function Features() {
     <section id="features" className="py-16 sm:py-24 bg-background/50">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">A Better Way to Hire Technical Talent</h2>
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">A Better Way to Grow Your Technical Skills</h2>
           <p className="mt-4 max-w-2xl mx-auto text-muted-foreground md:text-xl">
-            Our platform provides the tools you need to quickly and accurately assess the skills that matter most.
+            Our platform provides the tools you need to prove your abilities and master the skills that matter most.
           </p>
         </div>
         <motion.div 

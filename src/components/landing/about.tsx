@@ -1,4 +1,3 @@
-
 'use client';
 
 import { motion } from 'framer-motion';
@@ -9,9 +8,9 @@ import { CheckCircle } from 'lucide-react';
 export function About() {
   const aboutImage = PlaceHolderImages.find(p => p.id === 'about-visual');
   const stats = [
-    { value: '75%', label: 'Reduction in time-to-hire' },
-    { value: '30+', label: 'Pre-built Role Assessments' },
-    { value: '95%', label: 'Candidate Completion Rate' },
+    { value: '90%+', label: 'Score Improvement on Retake' },
+    { value: '30+', label: 'In-Demand Tech Roles' },
+    { value: '10k+', label: 'Skills Assessed Monthly' },
   ];
 
   return (
@@ -28,7 +27,7 @@ export function About() {
                 {aboutImage && (
                     <Image 
                         src={aboutImage.imageUrl}
-                        alt="About NexHireAI"
+                        alt="A developer focused on their code"
                         data-ai-hint={aboutImage.imageHint}
                         fill
                         className="rounded-2xl object-cover shadow-2xl"
@@ -42,10 +41,10 @@ export function About() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                Hire Smarter, Not Harder
+                Learn Smarter, Grow Faster
               </h2>
               <p className="mt-4 text-muted-foreground md:text-xl">
-                Stop wasting time on unqualified candidates. NexHireAI provides a powerful suite of AI-driven tools to identify, assess, and validate top-tier talent with unparalleled accuracy, ensuring you only interview the best.
+                Stop guessing what you need to learn. NexHireAI provides a powerful suite of AI-driven tools to identify your strengths, pinpoint weaknesses, and build a verified Skill Portfolio that gets you noticed.
               </p>
               <div className="mt-8 grid grid-cols-3 gap-4">
                   {stats.map(stat => (

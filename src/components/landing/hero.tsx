@@ -1,4 +1,3 @@
-
 'use client';
 
 import { motion, useMotionValue, useTransform, type MotionValue } from 'framer-motion';
@@ -73,20 +72,20 @@ export function Hero() {
                     className="p-8 md:p-12 rounded-3xl border border-white/10 bg-card/60 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/20"
                 >
                     <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
-                        Find and Validate Top Talent with AI
+                        Discover and Improve Your Skills with AI
                     </h1>
                     <p className="mt-6 text-lg text-muted-foreground md:text-xl">
-                        NexHireAI moves beyond resumes to identify the most skilled candidates using dynamic, real-world skill assessments.
+                        NexHireAI moves beyond traditional learning to help you master real-world abilities with dynamic, AI-powered skill assessments.
                     </p>
                     <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                         <motion.div whileHover={{ scale: 1.05, boxShadow: "0px 0px 20px hsl(var(--primary))" }} whileTap={{ scale: 0.95 }}>
                           <Button asChild size="lg" className="w-full sm:w-auto h-12 px-8 text-base">
-                            <Link href="/login">Request a Demo</Link>
+                            <Link href="/login">Start My Skill Journey</Link>
                           </Button>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base">
-                            <Link href="/login">Get Started Free</Link>
+                            <Link href="/skill-assessment">Explore Assessments</Link>
                           </Button>
                         </motion.div>
                     </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { motion } from 'framer-motion';
@@ -31,10 +30,10 @@ export function Cta() {
                  transition={{ duration: 0.6 }}
             >
                 <h2 className="text-3xl font-bold tracking-tighter text-primary-foreground sm:text-4xl md:text-5xl">
-                Ready to Find Your Next Great Hire?
+                Ready to Unlock Your Potential?
                 </h2>
                 <p className="mt-4 max-w-xl mx-auto text-primary-foreground/80 md:text-lg">
-                Sign up today and start building a world-class team with AI-driven insights.
+                Sign up today and start building a verified portfolio of your skills with AI-driven insights.
                 </p>
                 <motion.div 
                 className="mt-8 inline-block"

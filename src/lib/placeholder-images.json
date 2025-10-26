@@ -26,19 +26,19 @@
     },
     {
       "id": "feature2",
-      "description": "Feature image for Recruitment Simulations",
-      "imageUrl": "https://images.unsplash.com/photo-1760708551303-91d03920b6df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxkaWdpdGFsJTIwbG9ja3xlbnwwfHx8fDE3NjEyNzYwODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "digital lock"
+      "description": "Feature image for Verified Skill Portfolio",
+      "imageUrl": "https://images.unsplash.com/photo-1599011314958-6596a7985472?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+      "imageHint": "verified badge"
     },
     {
       "id": "feature3",
-      "description": "Feature image for Interactive Dashboard",
+      "description": "Feature image for Growth Analytics",
       "imageUrl": "https://images.unsplash.com/photo-1716842788277-648b5426809f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxnbG93aW5nJTIwZ3JhcGh8ZW58MHx8fHwxNzYxMjg4ODY0fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "glowing graph"
     },
     {
       "id": "feature4",
-      "description": "Feature image for AI-Powered Analytics",
+      "description": "Feature image for AI-Powered Feedback",
       "imageUrl": "https://images.unsplash.com/photo-1751554933476-d029737d58b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cm9ib3QlMjBodW1hbnxlbnwwfHx8fDE3NjEyNzYxOTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "robot human"
     },
@@ -50,9 +50,9 @@
     },
     {
       "id": "about-visual",
-      "description": "Visual for about section",
-      "imageUrl": "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8dGVhbSUyMGNvbGxhYm9yYXRpb258ZW58MHx8fHwxNzYxMTg0MjcwfDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "team collaboration"
+      "description": "Visual for about section showing a developer focused on code",
+      "imageUrl": "https://images.unsplash.com/photo-1550439062-609e1531270e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+      "imageHint": "developer code"
     }
   ]
 }
