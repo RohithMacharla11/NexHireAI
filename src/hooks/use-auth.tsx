@@ -9,7 +9,7 @@ import {
   ReactNode,
   useCallback,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -42,55 +42,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
   const { auth, firestore } = initializeFirebase();
 
-  const fetchUserData = useCallback(async (firebaseUser: FirebaseUser | null) => {
-    if (!firebaseUser) {
-      setUser(null);
-      setProfileData(null);
-      setIsLoading(false);
-      setIsProfileLoading(false);
-      return;
+  const handleRedirect = (role: RoleType) => {
+     if (role === 'admin' || role === 'recruiter') {
+        if (!pathname.startsWith('/admin')) {
+             router.push('/admin');
+        }
+    } else if (role === 'candidate') {
+        if (!pathname.startsWith('/dashboard') && !pathname.startsWith('/assessment') && !pathname.startsWith('/profile') && !pathname.startsWith('/skill-assessment')) {
+             router.push('/dashboard');
+        }
     }
-    
-    // Set basic user info immediately for faster UI response
-    const basicUser: User = {
-      id: firebaseUser.uid,
-      email: firebaseUser.email!,
-      name: firebaseUser.displayName || "User",
-      role: 'candidate', // This will be overwritten by profile data
-    };
-    setUser(basicUser);
-    setIsLoading(false);
+  }
 
-    // Fetch detailed profile
+  const fetchUserData = useCallback(async (firebaseUser: FirebaseUser) => {
     setIsProfileLoading(true);
     const userDocRef = doc(firestore, 'users', firebaseUser.uid);
     const userDoc = await getDoc(userDocRef);
     let fullProfile: User;
+
     if (userDoc.exists()) {
       fullProfile = { id: firebaseUser.uid, ...userDoc.data() } as User;
     } else {
-        // This might happen for a brand new signup that hasn't had a doc created yet
-        // Let's create a default one based on the signup info
-        console.warn(`User document not found for UID: ${firebaseUser.uid}. A default will be used.`);
-        fullProfile = basicUser;
+      console.warn(`User document not found for UID: ${firebaseUser.uid}. Creating a default.`);
+      fullProfile = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email!,
+        name: firebaseUser.displayName || "New User",
+        role: 'candidate', // Default role
+      };
+      await setDoc(userDocRef, fullProfile, { merge: true });
     }
     
+    setUser(fullProfile);
     setProfileData(fullProfile);
-    setUser(fullProfile); // Update user context with full profile info
+    setIsLoading(false);
     setIsProfileLoading(false);
 
-    // Role-based redirect
-    if (fullProfile.role === 'admin') {
-      router.push('/admin');
-    } else if (fullProfile.role === 'recruiter') {
-      router.push('/dashboard/admin');
-    } else {
-      router.push('/dashboard');
-    }
-
-  }, [firestore, router]);
+    return fullProfile;
+  }, [firestore]);
 
 
   useEffect(() => {
@@ -101,61 +93,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           setIsProfileLoading(false);
         } else {
-            // Fetch user data, but don't redirect here.
-            // Redirection should only happen after a manual login action.
-            const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-                const fullProfile = { id: firebaseUser.uid, ...userDoc.data() } as User;
-                setProfileData(fullProfile);
-                setUser(fullProfile);
-            } else {
-                setUser({
-                  id: firebaseUser.uid,
-                  email: firebaseUser.email!,
-                  name: firebaseUser.displayName || "User",
-                  role: 'candidate',
-                });
-                setProfileData(null);
-            }
-            setIsLoading(false);
-            setIsProfileLoading(false);
+            setIsLoading(true);
+            await fetchUserData(firebaseUser);
         }
     });
     return () => unsubscribe();
-  }, [auth, firestore]);
+  }, [auth, fetchUserData]);
   
   const refreshUser = useCallback(async () => {
     const firebaseUser = auth.currentUser;
     if (firebaseUser) {
-        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            const fullProfile = { id: firebaseUser.uid, ...userDoc.data() } as User;
-            setProfileData(fullProfile);
-            setUser(fullProfile);
-        }
+        await fetchUserData(firebaseUser);
     }
-  }, [auth, firestore]);
+  }, [auth, fetchUserData]);
 
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    // onAuthStateChanged will fetch data, but we can trigger a redirect manually here
-    // for a better user experience after login.
-    const userDocRef = doc(firestore, 'users', userCredential.user.uid);
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-        const role = userDoc.data().role;
-        if(role === 'admin') {
-            router.push('/admin');
-        } else if(role === 'recruiter') {
-            router.push('/dashboard/admin');
-        } else {
-            router.push('/dashboard');
-        }
-    } else {
-        router.push('/dashboard'); // Default fallback
-    }
+    const loggedInUser = await fetchUserData(userCredential.user);
+    handleRedirect(loggedInUser.role);
   };
 
   const signup = async (signupData: SignupData) => {
@@ -174,12 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatarUrl: `https://picsum.photos/seed/${firebaseUser.uid}/200`,
       xp: 0,
       badges: [],
+      ...(role === 'candidate' && { candidateSpecific: { skills: [], locationPreferences: [] } }),
+      ...(role === 'recruiter' && { recruiterSpecific: { companyName: '', hiringFocus: [] } }),
     };
 
     const userDocRef = doc(firestore, 'users', firebaseUser.uid);
     await setDoc(userDocRef, userProfile);
     
-    // Don't auto-login, let them go to the login page.
     await signOut(auth);
   };
 
@@ -211,3 +167,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

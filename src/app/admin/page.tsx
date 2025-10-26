@@ -35,13 +35,13 @@ export default function AdminHomePage() {
   const usersPerPage = 10;
 
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== 'admin')) {
+    if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'recruiter'))) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user && user.role === 'admin' && firestore) {
+    if (user && (user.role === 'admin' || user.role === 'recruiter') && firestore) {
       const fetchData = async () => {
         setIsLoading(true);
         // Fetch all users
@@ -68,10 +68,13 @@ export default function AdminHomePage() {
 
         const assessmentsData = assessmentsSnapshot.docs.map(doc => {
             const data = doc.data() as AssessmentAttempt;
+            // The userId is on the attempt object itself
+            const userId = (doc.ref.parent.parent as any).id;
             return {
                 ...data,
                 id: doc.id,
-                userName: userMap.get(data.userId) || 'Unknown User',
+                userId: userId,
+                userName: userMap.get(userId) || 'Unknown User',
                 roleName: roleMap.get(data.roleId) || 'Unknown Role',
             };
         });
@@ -144,7 +147,7 @@ export default function AdminHomePage() {
                           <TableRow key={u.id}>
                             <TableCell>{u.name}</TableCell>
                             <TableCell>{u.email}</TableCell>
-                            <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                            <TableCell><Badge variant={u.role === 'admin' ? 'default' : (u.role === 'recruiter' ? 'secondary' : 'outline')}>{u.role}</Badge></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -205,7 +208,7 @@ export default function AdminHomePage() {
                             <TableRow key={u.id}>
                                 <TableCell>{u.name}</TableCell>
                                 <TableCell>{u.email}</TableCell>
-                                <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                                <TableCell><Badge variant={u.role === 'admin' ? 'default' : (u.role === 'recruiter' ? 'secondary' : 'outline')}>{u.role}</Badge></TableCell>
                                  <TableCell className="text-center font-medium">{u.assessmentCount}</TableCell>
                                  <TableCell>
                                     <Button asChild variant="ghost" size="sm">
@@ -256,7 +259,7 @@ export default function AdminHomePage() {
                         </TableHeader>
                         <TableBody>
                             {allAssessments.map(attempt => (
-                            <TableRow key={attempt.id}>
+                            <TableRow key={`${attempt.userId}-${attempt.id}`}>
                                 <TableCell>{attempt.userName}</TableCell>
                                 <TableCell>{attempt.roleName}</TableCell>
                                 <TableCell>
@@ -293,3 +296,5 @@ const StatCard = ({ icon, title, value }: { icon: React.ReactNode, title: string
         </CardContent>
     </Card>
 );
+
+    

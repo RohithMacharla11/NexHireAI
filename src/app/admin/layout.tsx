@@ -2,7 +2,7 @@
 'use client';
 
 import { Sidebar, SidebarProvider } from "@/components/ui/sidebar";
-import { Home, User } from "lucide-react";
+import { Home, User, Shield } from "lucide-react";
 import { SidebarButton } from "@/components/dashboard/SidebarButton";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 import { Header } from "@/components/landing/header";
 
 const adminNavItems = [
-  { href: "/admin", icon: <Home />, label: "Home" },
+  { href: "/admin", icon: <Shield />, label: "Dashboard" },
 ];
 
 export default function AdminLayout({
@@ -76,3 +76,5 @@ export default function AdminLayout({
     </>
   );
 }
+
+    
