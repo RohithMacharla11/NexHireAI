@@ -9,6 +9,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '../ui/card';
 import { motion } from 'framer-motion';
+import { Badge } from '../ui/badge';
 
 interface ProfileCardProps {
   profileData: User;
@@ -57,6 +58,7 @@ export function ProfileCard({ profileData, assessmentHistory, onRunAnalysis, onE
                     <div className="text-center md:text-left">
                         <h1 className="text-3xl font-bold">{profileData.name}</h1>
                         <p className="text-muted-foreground">{profileData.email}</p>
+                        <Badge variant={profileData.role === 'admin' ? 'default' : 'secondary'} className="capitalize mt-2">{profileData.role}</Badge>
                     </div>
                 </div>
 
@@ -125,5 +127,3 @@ export function ProfileCard({ profileData, assessmentHistory, onRunAnalysis, onE
       </div>
   );
 }
-
-    
