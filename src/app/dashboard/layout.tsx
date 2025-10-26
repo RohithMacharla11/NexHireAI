@@ -16,10 +16,6 @@ const candidateNavItems = [
   { href: "/dashboard/learning", icon: <BookOpen />, label: "AI Learning" },
 ];
 
-const recruiterNavItems = [
-    { href: "/admin", icon: <Shield />, label: "Admin Dashboard" },
-]
-
 export default function DashboardLayout({
   children,
 }: {
@@ -28,10 +24,9 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const navItems = user?.role === 'candidate' ? candidateNavItems : recruiterNavItems;
-  
-  if (user?.role === 'admin') {
-      // Admin has a separate layout, this should not be rendered.
+  // This layout is now only for candidates. Admins have their own layout.
+  // We can return null or a loading state if a non-candidate tries to access it.
+  if (user?.role !== 'candidate') {
       return null;
   }
   
@@ -42,13 +37,13 @@ export default function DashboardLayout({
             <div className="flex h-full flex-col p-2">
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex flex-col gap-2">
-                        {navItems.map((item) => (
+                        {candidateNavItems.map((item) => (
                         <SidebarButton
                             key={item.href}
                             href={item.href}
                             icon={item.icon}
                             label={item.label}
-                            isActive={pathname.startsWith(item.href)}
+                            isActive={pathname === item.href}
                             tooltip={item.label}
                         />
                         ))}

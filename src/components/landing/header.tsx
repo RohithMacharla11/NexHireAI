@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -18,7 +19,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '../theme-toggle';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '../ui/skeleton';
-import { User, LayoutDashboard, NotebookPen } from 'lucide-react';
+import { User, LayoutDashboard, NotebookPen, Shield } from 'lucide-react';
 import { Navigation } from './navigation';
 
 export function Header() {
@@ -72,14 +73,22 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {user.role === 'candidate' ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Skill Assessment</Link>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin"><Shield className="mr-2 h-4 w-4" />Admin Dashboard</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
-                </DropdownMenuItem>
-                 <DropdownMenuItem asChild>
-                  <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Skill Assessment</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile/me"><User className="mr-2 h-4 w-4" />Profile</Link>
+                  <Link href={user.role === 'candidate' ? '/profile/me' : '/admin/profile'}><User className="mr-2 h-4 w-4" />Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
