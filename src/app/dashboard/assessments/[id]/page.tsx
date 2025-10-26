@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { AssessmentAttempt, Role, Question, UserResponse } from '@/lib/types';
 import { Loader2, ArrowLeft, Download, BarChart, BrainCircuit, CheckCircle, XCircle } from 'lucide-react';
@@ -34,13 +34,15 @@ export default function AssessmentResultPage() {
     }, [user, authLoading, router]);
 
     useEffect(() => {
-        if (!userIdToFetch || !firestore || !params.id) return;
+        if (!user || !firestore || !params.id) return;
 
         const fetchAttempt = async () => {
             setIsFetching(true);
+            const pathUserId = params.userId as string || user.id;
+
             try {
                 const attemptId = params.id as string;
-                const attemptDocRef = doc(firestore, 'users', userIdToFetch, 'assessments', attemptId);
+                const attemptDocRef = doc(firestore, 'users', pathUserId, 'assessments', attemptId);
                 const attemptDoc = await getDoc(attemptDocRef);
 
                 if (!attemptDoc.exists()) {
@@ -74,7 +76,7 @@ export default function AssessmentResultPage() {
         };
 
         fetchAttempt();
-    }, [userIdToFetch, firestore, params.id]);
+    }, [user, firestore, params.id, params.userId]);
 
     const containerVariants = {
         hidden: { opacity: 1 },
@@ -180,9 +182,9 @@ export default function AssessmentResultPage() {
                     <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-lg">
                         <CardHeader><CardTitle>Question Breakdown</CardTitle></CardHeader>
                         <CardContent>
-                           <Collapsible>
+                           <div className="space-y-2">
                              {(attempt.questionsWithAnswers || []).map((qa, index) => (
-                                <div key={qa.id} className="border-b last:border-b-0">
+                                <Collapsible key={qa.id} className="border-b last:border-b-0">
                                     <CollapsibleTrigger className="w-full text-left py-4 flex justify-between items-center hover:bg-muted/30 px-2 rounded-md">
                                         <div className="flex items-center gap-4">
                                             {qa.isCorrect ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
@@ -214,9 +216,9 @@ export default function AssessmentResultPage() {
                                             />
                                         )}
                                     </CollapsibleContent>
-                                </div>
+                                </Collapsible>
                             ))}
-                           </Collapsible>
+                           </div>
                         </CardContent>
                     </Card>
                  </motion.div>
@@ -231,3 +233,5 @@ const InfoCard = ({ title, value }: { title: string, value: string }) => (
         <p className="text-3xl font-bold mt-2">{value}</p>
     </Card>
 )
+
+    
