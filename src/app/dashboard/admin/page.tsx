@@ -1,16 +1,18 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import { Loader2, Shield, Users, Briefcase } from 'lucide-react';
+import { Loader2, Shield, Users, Briefcase, FileText, Search } from 'lucide-react';
 import type { User as UserType, Role } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -21,6 +23,10 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserType[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'admin')) {
@@ -32,17 +38,14 @@ export default function AdminPage() {
     if (user && user.role === 'admin' && firestore) {
       const fetchData = async () => {
         setIsLoading(true);
-        // Fetch all users
         const usersSnapshot = await getDocs(collection(firestore, 'users'));
         const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as UserType[];
         setUsers(usersList);
 
-        // Fetch all roles
         const rolesSnapshot = await getDocs(collection(firestore, 'roles'));
         const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Role[];
         setRoles(rolesList);
         
-        // Fetch stats (simplified)
         let totalAssessments = 0;
         for (const u of usersList) {
             const assessmentsSnapshot = await getDocs(collection(firestore, `users/${u.id}/assessments`));
@@ -55,6 +58,19 @@ export default function AdminPage() {
       fetchData();
     }
   }, [user, firestore]);
+
+  const filteredUsers = useMemo(() => 
+    users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase())),
+    [users, searchTerm]
+  );
+  
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * usersPerPage;
+    return filteredUsers.slice(startIndex, startIndex + usersPerPage);
+  }, [filteredUsers, currentPage, usersPerPage]);
+
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+
 
   if (authLoading || isLoading || user?.role !== 'admin') {
     return (
@@ -71,59 +87,139 @@ export default function AdminPage() {
       
       <h1 className="text-4xl font-bold mb-8 flex items-center gap-3"><Shield /> Admin Panel</h1>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <StatCard icon={<Users />} title="Total Users" value={stats.totalUsers} />
-        <StatCard icon={<Briefcase />} title="Total Roles" value={roles.length} />
-        <StatCard icon={<Users />} title="Assessments Taken" value={stats.totalAssessments} />
-      </div>
+      <Tabs defaultValue="overview">
+        <TabsList className="mb-8">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="candidates">Candidates</TabsTrigger>
+            <TabsTrigger value="assessments">Assessments</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                <StatCard icon={<Users />} title="Total Users" value={stats.totalUsers} />
+                <StatCard icon={<Briefcase />} title="Total Roles" value={roles.length} />
+                <StatCard icon={<FileText />} title="Assessments Taken" value={stats.totalAssessments} />
+              </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>User Management</CardTitle></CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map(u => (
-                  <TableRow key={u.id}>
-                    <TableCell>{u.name}</TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader><CardTitle>Role Management</CardTitle></CardHeader>
-          <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Role Name</TableHead>
-                        <TableHead>Sub-skills</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {roles.map(r => (
-                        <TableRow key={r.id}>
-                            <TableCell className="font-medium">{r.name}</TableCell>
-                            <TableCell>{r.subSkills.join(', ')}</TableCell>
+              <div className="grid gap-8 lg:grid-cols-2">
+                <Card>
+                  <CardHeader><CardTitle>Recent Users</CardTitle></CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+                      </TableHeader>
+                      <TableBody>
+                        {users.slice(0, 5).map(u => (
+                          <TableRow key={u.id}>
+                            <TableCell>{u.name}</TableCell>
+                            <TableCell>{u.email}</TableCell>
+                            <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader><CardTitle>Role Management</CardTitle></CardHeader>
+                  <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Role Name</TableHead>
+                                <TableHead>Sub-skills</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {roles.slice(0,5).map(r => (
+                                <TableRow key={r.id}>
+                                    <TableCell className="font-medium">{r.name}</TableCell>
+                                    <TableCell>{r.subSkills.join(', ')}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+        </TabsContent>
+        <TabsContent value="candidates">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Candidate Management</CardTitle>
+                    <div className="mt-4 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search candidates..." 
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Assessments Taken</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {paginatedUsers.map(u => (
+                            <TableRow key={u.id}>
+                                <TableCell>{u.name}</TableCell>
+                                <TableCell>{u.email}</TableCell>
+                                <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                                 <TableCell>{/* Placeholder */ '0'}</TableCell>
+                                 <TableCell>
+                                    <Button variant="ghost" size="sm">View</Button>
+                                 </TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    <div className="flex items-center justify-end space-x-2 py-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="assessments">
+             <Card>
+                <CardHeader><CardTitle>Assessment Management</CardTitle></CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground text-center p-8">Assessment management tools will be available here soon.</p>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
