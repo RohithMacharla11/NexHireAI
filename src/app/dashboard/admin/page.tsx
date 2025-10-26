@@ -14,13 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
+type UserWithAssessmentCount = UserType & { assessmentCount?: number };
+
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { firestore } = initializeFirebase();
 
   const [stats, setStats] = useState({ totalUsers: 0, totalAssessments: 0 });
-  const [users, setUsers] = useState<UserType[]>([]);
+  const [users, setUsers] = useState<UserWithAssessmentCount[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,19 +40,29 @@ export default function AdminPage() {
     if (user && user.role === 'admin' && firestore) {
       const fetchData = async () => {
         setIsLoading(true);
+        // Fetch all users
         const usersSnapshot = await getDocs(collection(firestore, 'users'));
         const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as UserType[];
-        setUsers(usersList);
+        
+        // Fetch assessment counts for all users
+        let totalAssessments = 0;
+        const usersWithCounts = await Promise.all(
+            usersList.map(async u => {
+                const assessmentsSnapshot = await getDocs(collection(firestore, `users/${u.id}/assessments`));
+                const count = assessmentsSnapshot.size;
+                totalAssessments += count;
+                return { ...u, assessmentCount: count };
+            })
+        );
+        
+        setUsers(usersWithCounts);
 
+        // Fetch roles
         const rolesSnapshot = await getDocs(collection(firestore, 'roles'));
         const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Role[];
         setRoles(rolesList);
         
-        let totalAssessments = 0;
-        for (const u of usersList) {
-            const assessmentsSnapshot = await getDocs(collection(firestore, `users/${u.id}/assessments`));
-            totalAssessments += assessmentsSnapshot.size;
-        }
+        // Set overall stats
         setStats({ totalUsers: usersList.length, totalAssessments });
 
         setIsLoading(false);
@@ -169,7 +181,7 @@ export default function AdminPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
-                                <TableHead>Assessments Taken</TableHead>
+                                <TableHead className="text-center">Assessments Taken</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -179,7 +191,7 @@ export default function AdminPage() {
                                 <TableCell>{u.name}</TableCell>
                                 <TableCell>{u.email}</TableCell>
                                 <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
-                                 <TableCell>{/* Placeholder */ '0'}</TableCell>
+                                 <TableCell className="text-center font-medium">{u.assessmentCount}</TableCell>
                                  <TableCell>
                                     <Button variant="ghost" size="sm">View</Button>
                                  </TableCell>
@@ -235,3 +247,5 @@ const StatCard = ({ icon, title, value }: { icon: React.ReactNode, title: string
         </CardContent>
     </Card>
 );
+
+    
