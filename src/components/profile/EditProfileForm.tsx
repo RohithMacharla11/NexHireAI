@@ -161,8 +161,8 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
                     <Input placeholder="Job Title" {...register(`candidateSpecific.experiences.${index}.title`)} />
                     <Input placeholder="Company" {...register(`candidateSpecific.experiences.${index}.company`)} />
                     <div className="grid grid-cols-2 gap-2">
-                        <Input placeholder="Start Date" type="date" {...register(`candidateSpecific.experiences.${index}.startDate`)} />
-                        <Input placeholder="End Date" type="date" {...register(`candidateSpecific.experiences.${index}.endDate`)} />
+                        <Input placeholder="Start Date" type="text" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => e.target.type = 'text'} {...register(`candidateSpecific.experiences.${index}.startDate`)} />
+                        <Input placeholder="End Date" type="text" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => e.target.type = 'text'} {...register(`candidateSpecific.experiences.${index}.endDate`)} />
                     </div>
                     <Textarea placeholder="Description" {...register(`candidateSpecific.experiences.${index}.description`)} />
                     <Button type="button" size="icon" variant="destructive" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeExp(index)}><Trash2 className="h-4 w-4" /></Button>

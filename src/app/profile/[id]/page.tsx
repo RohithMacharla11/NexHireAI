@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { User as UserType, AnalysisSummary } from '@/lib/types';
@@ -78,18 +78,19 @@ export default function ProfilePage() {
   const handleProfileUpdate = async (formData: Partial<UserType>) => {
     if (!profileId || !profileData) return;
 
-    const updatedData = JSON.parse(JSON.stringify(profileData));
-
-    for (const key in formData) {
-        if (Object.prototype.hasOwnProperty.call(formData, key)) {
-            const formValue = formData[key as keyof typeof formData];
-            if (typeof formValue === 'object' && formValue !== null && !Array.isArray(formValue) && updatedData[key] && typeof updatedData[key] === 'object') {
-                updatedData[key] = { ...updatedData[key], ...formValue };
-            } else {
-                updatedData[key] = formValue;
+    // A deep merge function that handles nested objects without overwriting them
+    const deepMerge = (target: any, source: any) => {
+        for (const key in source) {
+            if (source[key] instanceof Object && key in target) {
+                Object.assign(source[key], deepMerge(target[key], source[key]))
             }
         }
+        // Join `target` and `source` properties
+        Object.assign(target || {}, source)
+        return target
     }
+
+    const updatedData = deepMerge({ ...profileData }, formData);
     
     try {
         const userDocRef = doc(firestore, 'users', profileId as string);
@@ -130,13 +131,10 @@ export default function ProfilePage() {
         toast({ title: "Analyzing Profile...", description: "This may take a moment." });
         const analysisResult: AnalysisSummary = await analyzeResume(analysisInput);
         
-        const updatePayload = {
-            analysis: {
-                summary: analysisResult
-            }
-        };
-        
-        await handleProfileUpdate(updatePayload);
+        const userDocRef = doc(firestore, 'users', profileId as string);
+        await updateDoc(userDocRef, {
+            'analysis.summary': analysisResult,
+        });
         
         setProfileData(prev => prev ? ({
           ...prev,
@@ -232,5 +230,3 @@ const ProfileSkeleton = () => (
         </div>
     </div>
 );
-
-    

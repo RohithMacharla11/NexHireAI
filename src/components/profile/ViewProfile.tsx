@@ -6,12 +6,22 @@ import { Button } from '@/components/ui/button';
 import { FileUpload } from '@/components/ui/file-upload';
 import type { User as UserType } from '@/lib/types';
 import { Separator } from '../ui/separator';
+import { format } from 'date-fns';
 
 export const ViewProfile = ({ profileData, onResumeUpload, isOwnProfile }: { profileData: UserType, onResumeUpload: (file: File) => void, isOwnProfile: boolean }) => {
   return profileData.role === 'candidate' 
     ? <ViewCandidateProfile profileData={profileData} onResumeUpload={onResumeUpload} isOwnProfile={isOwnProfile}/> 
     : <ViewRecruiterProfile profileData={profileData} />;
 };
+
+const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Present';
+    try {
+        return format(new Date(dateString), 'MMM yyyy');
+    } catch {
+        return dateString;
+    }
+}
 
 const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { profileData: UserType, onResumeUpload: (file: File) => void, isOwnProfile: boolean }) => {
     const candidateData = profileData.candidateSpecific;
@@ -31,6 +41,8 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { p
                     </div>
                 ) : <p className="text-foreground/60 italic">Add your skills in edit mode.</p>}
             </div>
+            
+            <InfoSection label="Bio" value={candidateData?.bio} />
 
             <Separator />
 
@@ -41,8 +53,8 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { p
                             <div key={i}>
                                 <h4 className="font-semibold">{exp.title}</h4>
                                 <p className="text-sm text-muted-foreground">{exp.company}</p>
-                                <p className="text-xs text-muted-foreground">{exp.startDate} - {exp.endDate || 'Present'}</p>
-                                <p className="text-sm mt-1">{exp.description}</p>
+                                <p className="text-xs text-muted-foreground">{formatDate(exp.startDate)} - {formatDate(exp.endDate)}</p>
+                                <p className="text-sm mt-1 whitespace-pre-wrap">{exp.description}</p>
                             </div>
                         ))}
                     </div>
@@ -56,8 +68,10 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { p
                     <div className="space-y-4">
                         {candidateData.projects.map((proj, i) => (
                             <div key={i}>
-                                <a href={proj.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">{proj.title}</a>
-                                <p className="text-sm mt-1">{proj.description}</p>
+                                <a href={proj.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline flex items-center gap-2">
+                                    {proj.title} <LinkIcon className="h-4 w-4" />
+                                </a>
+                                <p className="text-sm mt-1 whitespace-pre-wrap">{proj.description}</p>
                             </div>
                         ))}
                     </div>
@@ -72,7 +86,7 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { p
                         {candidateData.achievements.map((ach, i) => (
                            <li key={i}>
                                <span className="font-semibold">{ach.title}</span>
-                               {ach.description && <p className="text-sm text-muted-foreground">{ach.description}</p>}
+                               {ach.description && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ach.description}</p>}
                            </li>
                         ))}
                     </ul>
@@ -90,8 +104,6 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { p
                 ) : <p className="text-foreground/60 italic">No location preferences set.</p>}
             </div>
 
-            <InfoSection label="Bio" value={candidateData?.bio} />
-            
             <div className="flex flex-wrap gap-4 items-center">
                 <SocialLink icon={<Linkedin />} href={profileData.linkedinUrl} label="LinkedIn" />
                 <SocialLink icon={<GitBranch />} href={profileData.githubUrl} label="GitHub" />
