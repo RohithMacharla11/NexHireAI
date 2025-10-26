@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import { Loader2, Shield, Users, Briefcase, FileText, Search } from 'lucide-react';
+import { Loader2, Shield, Users, Briefcase, FileText, Search, View } from 'lucide-react';
 import type { User as UserType, Role } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 type UserWithAssessmentCount = UserType & { assessmentCount?: number };
 
@@ -193,7 +194,9 @@ export default function AdminPage() {
                                 <TableCell><Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
                                  <TableCell className="text-center font-medium">{u.assessmentCount}</TableCell>
                                  <TableCell>
-                                    <Button variant="ghost" size="sm">View</Button>
+                                    <Button asChild variant="ghost" size="sm">
+                                      <Link href={`/profile/${u.id}`}><View className="mr-2 h-4 w-4"/>View</Link>
+                                    </Button>
                                  </TableCell>
                             </TableRow>
                             ))}
@@ -247,5 +250,3 @@ const StatCard = ({ icon, title, value }: { icon: React.ReactNode, title: string
         </CardContent>
     </Card>
 );
-
-    

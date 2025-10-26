@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Sidebar, SidebarProvider } from "@/components/ui/sidebar";
@@ -54,10 +53,10 @@ export default function DashboardLayout({
                 </div>
                 <div className="mt-auto">
                     <SidebarButton
-                        href="/profile"
+                        href="/profile/me"
                         icon={<User />}
                         label="Profile"
-                        isActive={pathname === '/profile'}
+                        isActive={pathname === '/profile/me'}
                         tooltip="Profile"
                     />
                 </div>

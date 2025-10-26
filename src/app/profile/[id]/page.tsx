@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -17,39 +17,48 @@ import { motion } from 'framer-motion';
 type View = 'profile' | 'edit' | 'analysis';
 
 export default function ProfilePage() {
-  const { user, isLoading: authLoading, refreshUser } = useAuth();
+  const { user: currentUser, isLoading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
+  const params = useParams();
+  const { toast } = useToast();
+  const { firestore } = initializeFirebase();
+
   const [profileData, setProfileData] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [view, setView] = useState<View>('profile');
   const [rotation, setRotation] = useState(0);
 
-  const { toast } = useToast();
-  const { firestore } = initializeFirebase();
+  const profileId = params.id === 'me' ? currentUser?.id : params.id;
+  const isOwnProfile = profileId === currentUser?.id;
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !currentUser) {
       router.push('/login');
     }
-  }, [user, authLoading, router]);
+  }, [currentUser, authLoading, router]);
 
   const fetchProfile = useCallback(async () => {
-    if (user && firestore) {
+    if (profileId && firestore) {
       setIsLoading(true);
       try {
-        const userDocRef = doc(firestore, 'users', user.id);
+        const userDocRef = doc(firestore, 'users', profileId as string);
         const docSnap = await getDoc(userDocRef);
         let data: UserType;
         if (docSnap.exists()) {
           data = { id: docSnap.id, ...docSnap.data() } as UserType;
         } else {
+           if (!isOwnProfile) {
+                toast({ title: "User not found", variant: "destructive" });
+                router.push('/dashboard/admin');
+                return;
+           }
           data = {
-            id: user.id,
-            email: user.email,
-            name: user.name || "New User",
+            id: currentUser!.id,
+            email: currentUser!.email,
+            name: currentUser!.name || "New User",
             role: 'candidate', 
           };
-          await setDoc(doc(firestore, "users", user.id), data);
+          await setDoc(userDocRef, data);
         }
         setProfileData(data);
       } catch (error) {
@@ -59,38 +68,36 @@ export default function ProfilePage() {
         setIsLoading(false);
       }
     }
-  }, [user, firestore, toast]);
+  }, [profileId, firestore, toast, isOwnProfile, router, currentUser]);
 
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
   
   const handleProfileUpdate = async (formData: Partial<UserType>) => {
-    if (!user || !profileData) return;
+    if (!profileId || !profileData) return;
 
-    // Create a deep copy to avoid direct state mutation issues
     const updatedData = JSON.parse(JSON.stringify(profileData));
 
-    // Merge the new form data into the copied state
     for (const key in formData) {
         if (Object.prototype.hasOwnProperty.call(formData, key)) {
             const formValue = formData[key as keyof typeof formData];
             if (typeof formValue === 'object' && formValue !== null && !Array.isArray(formValue) && updatedData[key] && typeof updatedData[key] === 'object') {
-                // Deep merge for nested objects like candidateSpecific
                 updatedData[key] = { ...updatedData[key], ...formValue };
             } else {
-                // Simple overwrite for other properties
                 updatedData[key] = formValue;
             }
         }
     }
     
     try {
-        const userDocRef = doc(firestore, 'users', user.id);
+        const userDocRef = doc(firestore, 'users', profileId as string);
         await setDoc(userDocRef, updatedData, { merge: true });
         
         setProfileData(updatedData);
-        await refreshUser(); // Refresh global user state
+        if(isOwnProfile) {
+            await refreshUser(); 
+        }
 
         toast({ title: "Success", description: "Profile updated successfully!" });
         handleViewChange('profile');
@@ -183,6 +190,7 @@ export default function ProfilePage() {
                       onEdit={() => handleViewChange('edit')}
                       onViewInsights={hasAnalysis ? () => handleViewChange('analysis') : undefined}
                       onAvatarUpload={(file) => handleProfileUpdate({ avatarUrl: URL.createObjectURL(file)})}
+                      isOwnProfile={isOwnProfile}
                     />
                 </div>
 
@@ -194,6 +202,7 @@ export default function ProfilePage() {
                                 profileData={profileData} 
                                 onSave={handleProfileUpdate} 
                                 onCancel={() => handleViewChange('profile')} 
+                                isOwnProfile={isOwnProfile}
                             />
                         </div>
                     </div>
@@ -214,9 +223,11 @@ export default function ProfilePage() {
 }
 
 const ProfileSkeleton = () => (
-    <div className="container mx-auto px-4 py-12 md:px-6">
-      <div className="max-w-4xl mx-auto">
-        <Skeleton className="h-[650px] w-full rounded-3xl" />
-      </div>
+    <div className="relative h-[calc(100vh-5rem)] w-full bg-secondary flex items-center justify-center">
+        <div className="container mx-auto px-4 md:px-6 flex items-center justify-center">
+            <div className="w-full max-w-4xl">
+                <Skeleton className="h-[70vh] w-full rounded-3xl" />
+            </div>
+        </div>
     </div>
 );

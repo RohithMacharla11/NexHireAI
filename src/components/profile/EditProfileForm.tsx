@@ -18,9 +18,10 @@ interface EditProfileFormProps {
   profileData: User;
   onSave: (data: Partial<User>) => Promise<void>;
   onCancel: () => void;
+  isOwnProfile: boolean;
 }
 
-export const EditProfileForm = ({ profileData, onSave, onCancel }: EditProfileFormProps) => {
+export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }: EditProfileFormProps) => {
   const { register, handleSubmit, control, formState: { isSubmitting, errors } } = useForm<User>({
     defaultValues: {
       ...profileData,

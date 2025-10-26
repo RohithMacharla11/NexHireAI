@@ -33,7 +33,7 @@ export default function AIJobRecommenderPage() {
                 description: 'Please complete your profile to get AI recommendations.',
                 variant: 'destructive',
             });
-            router.push('/profile');
+            router.push('/profile/me');
             return;
         }
 
@@ -44,7 +44,7 @@ export default function AIJobRecommenderPage() {
                 description: 'Please add skills and a bio to your profile for an accurate analysis.',
                 variant: 'destructive',
             });
-            router.push('/profile');
+            router.push('/profile/me');
             return;
         }
 

@@ -40,7 +40,7 @@ export default function AILearningPage() {
                 description: 'Please add skills to your profile for personalized recommendations.',
                 variant: 'destructive',
             });
-            router.push('/profile');
+            router.push('/profile/me');
             return;
         }
 

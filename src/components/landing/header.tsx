@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -80,7 +79,7 @@ export function Header() {
                   <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Skill Assessment</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                  <Link href="/profile/me"><User className="mr-2 h-4 w-4" />Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>

@@ -3,8 +3,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ViewProfile } from './ViewProfile';
 import type { User } from '@/lib/types';
-import { BrainCircuit, Pencil, Eye } from 'lucide-react';
+import { BrainCircuit, Pencil, Eye, ArrowLeft } from 'lucide-react';
 import { FileUpload } from '@/components/ui/file-upload';
+import { useRouter } from 'next/navigation';
 
 interface ProfileCardProps {
   profileData: User;
@@ -12,10 +13,12 @@ interface ProfileCardProps {
   onEdit: () => void;
   onViewInsights?: () => void;
   onAvatarUpload: (file: File) => void;
+  isOwnProfile: boolean;
 }
 
-export function ProfileCard({ profileData, onRunAnalysis, onEdit, onViewInsights, onAvatarUpload }: ProfileCardProps) {
-  
+export function ProfileCard({ profileData, onRunAnalysis, onEdit, onViewInsights, onAvatarUpload, isOwnProfile }: ProfileCardProps) {
+  const router = useRouter();
+
   const handleResumeUpload = async (file: File) => {
       // Mock upload and analysis trigger.
       // In a real app, you would upload this to storage and update the user's resumeUrl
@@ -33,15 +36,17 @@ export function ProfileCard({ profileData, onRunAnalysis, onEdit, onViewInsights
                         <AvatarImage src={profileData.avatarUrl} alt={profileData.name} />
                         <AvatarFallback className="text-3xl bg-muted">{profileData.name?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <FileUpload
-                        onFileSelect={onAvatarUpload}
-                        accept="image/*"
-                        id="avatar-upload-view"
-                    >
-                        <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <Pencil className="h-6 w-6 text-white" />
-                        </div>
-                    </FileUpload>
+                    {isOwnProfile && (
+                        <FileUpload
+                            onFileSelect={onAvatarUpload}
+                            accept="image/*"
+                            id="avatar-upload-view"
+                        >
+                            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                <Pencil className="h-6 w-6 text-white" />
+                            </div>
+                        </FileUpload>
+                    )}
                 </div>
 
                 <div className="text-center md:text-left">
@@ -49,19 +54,24 @@ export function ProfileCard({ profileData, onRunAnalysis, onEdit, onViewInsights
                     <p className="text-muted-foreground">{profileData.email}</p>
                 </div>
                 <div className="md:ml-auto flex flex-col sm:flex-row gap-2">
-                    <Button onClick={onEdit} variant="outline"><Pencil className="mr-2 h-4 w-4" />Edit Profile</Button>
-                    {profileData.role === 'candidate' && (
+                    {isOwnProfile && (
+                        <Button onClick={onEdit} variant="outline"><Pencil className="mr-2 h-4 w-4" />Edit Profile</Button>
+                    )}
+                    {profileData.role === 'candidate' && isOwnProfile && (
                       hasAnalysis ? (
                         <Button onClick={onViewInsights}><Eye className="mr-2 h-4 w-4" /> View AI Insights</Button>
                       ) : (
                         <Button onClick={onRunAnalysis}><BrainCircuit className="mr-2 h-4 w-4" /> Analyze Profile</Button>
                       )
                     )}
+                     {!isOwnProfile && (
+                        <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
+                    )}
                 </div>
             </div>
         </div>
         <div className="flex-grow overflow-y-auto pr-4">
-          <ViewProfile profileData={profileData} onResumeUpload={handleResumeUpload} />
+          <ViewProfile profileData={profileData} onResumeUpload={handleResumeUpload} isOwnProfile={isOwnProfile} />
         </div>
       </div>
   );

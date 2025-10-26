@@ -7,13 +7,13 @@ import { FileUpload } from '@/components/ui/file-upload';
 import type { User as UserType } from '@/lib/types';
 import { Separator } from '../ui/separator';
 
-export const ViewProfile = ({ profileData, onResumeUpload }: { profileData: UserType, onResumeUpload: (file: File) => void }) => {
+export const ViewProfile = ({ profileData, onResumeUpload, isOwnProfile }: { profileData: UserType, onResumeUpload: (file: File) => void, isOwnProfile: boolean }) => {
   return profileData.role === 'candidate' 
-    ? <ViewCandidateProfile profileData={profileData} onResumeUpload={onResumeUpload} /> 
+    ? <ViewCandidateProfile profileData={profileData} onResumeUpload={onResumeUpload} isOwnProfile={isOwnProfile}/> 
     : <ViewRecruiterProfile profileData={profileData} />;
 };
 
-const ViewCandidateProfile = ({ profileData, onResumeUpload }: { profileData: UserType, onResumeUpload: (file: File) => void }) => {
+const ViewCandidateProfile = ({ profileData, onResumeUpload, isOwnProfile }: { profileData: UserType, onResumeUpload: (file: File) => void, isOwnProfile: boolean }) => {
     const candidateData = profileData.candidateSpecific;
     return (
         <div className="space-y-6">
@@ -98,7 +98,7 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload }: { profileData: Us
                 <SocialLink icon={<Globe />} href={profileData.portfolioUrl} label="Portfolio" />
             </div>
 
-            <div>
+            {isOwnProfile && <div>
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2"><FileText className="h-4 w-4" /> Resume</h3>
                 {profileData.resumeUrl ? (
                     <div className="flex items-center gap-4">
@@ -119,7 +119,7 @@ const ViewCandidateProfile = ({ profileData, onResumeUpload }: { profileData: Us
                         </div>
                     </FileUpload>
                 )}
-            </div>
+            </div>}
         </div>
     );
 }

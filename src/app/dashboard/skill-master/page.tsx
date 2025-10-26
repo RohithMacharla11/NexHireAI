@@ -49,7 +49,7 @@ export default function AISkillMasterPage() {
                 description: 'Please add some skills to your profile to generate your Skill Matrix.',
                 variant: 'destructive',
             });
-            router.push('/profile');
+            router.push('/profile/me');
             return;
         }
 
