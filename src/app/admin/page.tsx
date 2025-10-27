@@ -2,11 +2,15 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Shield, Building, Users, NotebookPen, BarChart, TrendingUp, UserCheck, Activity, ShieldCheck } from 'lucide-react';
+import { Users, NotebookPen, TrendingUp, UserCheck, Activity, ShieldCheck, BarChart, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { collection, getDocs, query, where, limit, orderBy, collectionGroup } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+import type { User as UserType, Role, AssessmentAttempt } from '@/lib/types';
+import { format, subMonths } from 'date-fns';
 
 const containerVariants = {
     hidden: { opacity: 1 },
@@ -22,19 +26,117 @@ const itemVariants = {
     visible: { y: 0, opacity: 1, },
 };
 
-const chartData = [
-  { name: 'Jan', Candidates: 120, Assessments: 200 },
-  { name: 'Feb', Candidates: 180, Assessments: 250 },
-  { name: 'Mar', Candidates: 250, Assessments: 310 },
-  { name: 'Apr', Candidates: 220, Assessments: 350 },
-  { name: 'May', Candidates: 300, Assessments: 420 },
-  { name: 'Jun', Candidates: 340, Assessments: 480 },
-];
-
+type ActivityItem = {
+    type: 'new_candidate' | 'assessment_completed';
+    text: string;
+    subtext: string;
+    timestamp: number;
+}
 
 export default function AdminHomePage() {
   const { user } = useAuth();
+  const { firestore } = initializeFirebase();
   
+  const [stats, setStats] = useState({ candidates: 0, assessments: 0, roles: 0, avgSuccess: 0 });
+  const [chartData, setChartData] = useState<{name: string, Candidates: number, Assessments: number}[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!firestore) return;
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            // Fetch users for candidate count and chart data
+            const usersQuery = query(collection(firestore, 'users'));
+            const usersSnapshot = await getDocs(usersQuery);
+            const allUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserType & { createdAt?: any }));
+            const candidateCount = allUsers.filter(u => u.role === 'candidate').length;
+
+            // Fetch all assessments for stats and chart
+            const assessmentsQuery = query(collectionGroup(firestore, 'assessments'), orderBy('submittedAt', 'desc'));
+            const assessmentsSnapshot = await getDocs(assessmentsQuery);
+            const allAssessments = assessmentsSnapshot.docs.map(doc => doc.data() as AssessmentAttempt);
+            const totalAssessments = allAssessments.length;
+            
+            const totalScore = allAssessments.reduce((acc, att) => acc + (att.finalScore || 0), 0);
+            const avgSuccess = totalAssessments > 0 ? Math.round(totalScore / totalAssessments) : 0;
+
+            // Fetch roles
+            const rolesQuery = query(collection(firestore, 'roles'));
+            const rolesSnapshot = await getDocs(rolesQuery);
+            const totalRoles = rolesSnapshot.size;
+
+            setStats({ candidates: candidateCount, assessments: totalAssessments, roles: totalRoles, avgSuccess });
+
+            // Prepare chart data for last 6 months
+            const monthlyData: Record<string, { Candidates: number, Assessments: number }> = {};
+            for (let i = 5; i >= 0; i--) {
+                const month = format(subMonths(new Date(), i), 'MMM');
+                monthlyData[month] = { Candidates: 0, Assessments: 0 };
+            }
+
+            allUsers.forEach(u => {
+                if (u.role === 'candidate' && u.createdAt?.seconds) {
+                    const month = format(new Date(u.createdAt.seconds * 1000), 'MMM');
+                    if (monthlyData[month]) {
+                        monthlyData[month].Candidates++;
+                    }
+                }
+            });
+
+            allAssessments.forEach(a => {
+                if (a.submittedAt) {
+                     const month = format(new Date(a.submittedAt), 'MMM');
+                     if (monthlyData[month]) {
+                        monthlyData[month].Assessments++;
+                    }
+                }
+            });
+
+            setChartData(Object.entries(monthlyData).map(([name, values]) => ({ name, ...values })));
+            
+            // Prepare recent activity
+            const newCandidateActivities = allUsers
+                .filter(u => u.role === 'candidate' && u.createdAt?.seconds)
+                .slice(0, 2)
+                .map(u => ({
+                    type: 'new_candidate' as const,
+                    text: `New Candidate: ${u.name}`,
+                    subtext: 'Joined',
+                    timestamp: u.createdAt.seconds * 1000,
+                }));
+            
+            const roleNames = new Map((await getDocs(collection(firestore, 'roles'))).docs.map(d => [d.id, (d.data() as Role).name]));
+
+            const assessmentActivities = allAssessments.slice(0, 3).map(a => ({
+                type: 'assessment_completed' as const,
+                text: `Assessment Completed`,
+                subtext: `${roleNames.get(a.roleId) || 'Unknown Role'} - ${Math.round(a.finalScore || 0)}%`,
+                timestamp: a.submittedAt || 0,
+            }));
+
+            const combinedActivities = [...newCandidateActivities, ...assessmentActivities]
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, 4);
+                
+            setRecentActivity(combinedActivities);
+
+        } catch (error) {
+            console.error("Failed to fetch admin dashboard data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchData();
+  }, [firestore]);
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+
   return (
     <div className="relative min-h-full w-full p-4 md:p-8">
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
@@ -57,8 +159,7 @@ export default function AdminHomePage() {
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">1,234</div>
-                        <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                        <div className="text-2xl font-bold">{stats.candidates}</div>
                     </CardContent>
                 </Card>
             </motion.div>
@@ -69,8 +170,7 @@ export default function AdminHomePage() {
                         <NotebookPen className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">+573</div>
-                        <p className="text-xs text-muted-foreground">+12.4% from last month</p>
+                        <div className="text-2xl font-bold">{stats.assessments}</div>
                     </CardContent>
                 </Card>
             </motion.div>
@@ -81,8 +181,7 @@ export default function AdminHomePage() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">72.8%</div>
-                        <p className="text-xs text-muted-foreground">+2.1% from last month</p>
+                        <div className="text-2xl font-bold">{stats.avgSuccess}%</div>
                     </CardContent>
                 </Card>
             </motion.div>
@@ -93,8 +192,7 @@ export default function AdminHomePage() {
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">32</div>
-                        <p className="text-xs text-muted-foreground">+2 new roles this month</p>
+                        <div className="text-2xl font-bold">{stats.roles}</div>
                     </CardContent>
                 </Card>
             </motion.div>
@@ -141,34 +239,17 @@ export default function AdminHomePage() {
                     <CardTitle className="flex items-center gap-2"><Activity /> Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                   <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-3 text-muted-foreground" />
-                        <div className="text-sm">
-                            <p className="font-medium">New Candidate: Sarah Lee</p>
-                            <p className="text-xs text-muted-foreground">Joined 2 minutes ago</p>
-                        </div>
-                   </div>
-                   <div className="flex items-center">
-                        <NotebookPen className="h-4 w-4 mr-3 text-muted-foreground" />
-                        <div className="text-sm">
-                            <p className="font-medium">Assessment Completed</p>
-                            <p className="text-xs text-muted-foreground">John D. - Frontend Developer - 88%</p>
-                        </div>
-                   </div>
-                    <div className="flex items-center">
-                        <ShieldCheck className="h-4 w-4 mr-3 text-muted-foreground" />
-                        <div className="text-sm">
-                            <p className="font-medium">New Role Added: DevOps Engineer</p>
-                            <p className="text-xs text-muted-foreground">1 hour ago</p>
-                        </div>
-                   </div>
-                   <div className="flex items-center">
-                        <NotebookPen className="h-4 w-4 mr-3 text-muted-foreground" />
-                        <div className="text-sm">
-                            <p className="font-medium">Assessment Completed</p>
-                            <p className="text-xs text-muted-foreground">Emily R. - Data Scientist - 92%</p>
-                        </div>
-                   </div>
+                  {recentActivity.length > 0 ? recentActivity.map((item, index) => (
+                       <div key={index} className="flex items-center">
+                            {item.type === 'new_candidate' ? <Users className="h-4 w-4 mr-3 text-muted-foreground" /> : <NotebookPen className="h-4 w-4 mr-3 text-muted-foreground" />}
+                            <div className="text-sm">
+                                <p className="font-medium">{item.text}</p>
+                                <p className="text-xs text-muted-foreground">{item.subtext}</p>
+                            </div>
+                       </div>
+                  )) : (
+                    <p className="text-sm text-muted-foreground">No recent activity.</p>
+                  )}
                 </CardContent>
             </Card>
         </motion.div>
@@ -176,3 +257,6 @@ export default function AdminHomePage() {
     </div>
   );
 }
+
+
+    

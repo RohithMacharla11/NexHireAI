@@ -1,6 +1,7 @@
 
 
 
+
 export type RoleType = 'candidate' | 'recruiter' | 'admin';
 
 export interface Role {
@@ -82,6 +83,10 @@ export interface User {
   resumeUrl?: string;
   xp?: number;
   badges?: string[];
+  createdAt?: {
+    seconds: number;
+    nanoseconds: number;
+  };
   candidateSpecific?: CandidateSpecificProfile;
   recruiterSpecific?: RecruiterSpecificProfile;
   analysis?: {
@@ -151,3 +156,6 @@ export type CodeExecutionResult = {
     time: string;
     memory: string;
 };
+
+
+    
