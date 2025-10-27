@@ -21,11 +21,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '../ui/skeleton';
 import { User, LayoutDashboard, NotebookPen, Shield } from 'lucide-react';
 import { Navigation } from './navigation';
+import { usePathname } from 'next/navigation';
 
 export function Header() {
   const { user, isLoading, logout } = useAuth();
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  const isAdminSection = pathname.startsWith('/admin');
 
   useEffect(() => {
     return scrollY.on('change', (latest) => {
@@ -41,11 +44,14 @@ export function Header() {
       )}
     >
       <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href={isAdminSection ? '/admin' : '/'} className="flex items-center gap-2">
           <Logo className="h-8 w-8" />
           <span className="text-xl font-bold">NexHireAI</span>
         </Link>
-        <Navigation />
+        
+        {/* Only show public navigation if not in the admin section */}
+        {!isAdminSection && <Navigation />}
+
         <div className="flex items-center gap-4">
           <ThemeToggle />
           {isLoading ? (
@@ -73,6 +79,8 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+
+                {/* Role-specific Menu Items */}
                 {user.role === 'candidate' ? (
                   <>
                     <DropdownMenuItem asChild>
@@ -81,15 +89,21 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Skill Assessment</Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile/me"><User className="mr-2 h-4 w-4" />Profile</Link>
+                    </DropdownMenuItem>
                   </>
                 ) : (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin"><Shield className="mr-2 h-4 w-4" />Admin Dashboard</Link>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin"><Shield className="mr-2 h-4 w-4" />Admin Dashboard</Link>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem asChild>
+                        <Link href="/admin/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                    </DropdownMenuItem>
+                  </>
                 )}
-                <DropdownMenuItem asChild>
-                  <Link href={user.role === 'candidate' ? '/profile/me' : '/admin/profile'}><User className="mr-2 h-4 w-4" />Profile</Link>
-                </DropdownMenuItem>
+                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
                   Log out

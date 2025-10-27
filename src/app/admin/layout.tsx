@@ -2,14 +2,14 @@
 'use client';
 
 import { Sidebar, SidebarProvider } from "@/components/ui/sidebar";
-import { Home, User, Shield } from "lucide-react";
+import { Shield, User } from "lucide-react";
 import { SidebarButton } from "@/components/dashboard/SidebarButton";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from 'next/navigation';
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { Header } from "@/components/landing/header";
+import { Header } from "@/components/landing/header"; // We include Header here for the admin layout specifically.
 
 const adminNavItems = [
   { href: "/admin", icon: <Shield />, label: "Dashboard" },
@@ -38,43 +38,15 @@ export default function AdminLayout({
     );
   }
   
+  // This layout now includes the Header, but the navigation inside the header
+  // will be configured to only show admin-relevant links.
   return (
     <>
       <Header />
-      <SidebarProvider>
-        <div className="flex flex-row flex-grow overflow-hidden">
-          <Sidebar onHover="expand">
-              <div className="flex h-full flex-col p-2">
-                  <div className="flex-1 overflow-y-auto">
-                      <div className="flex flex-col gap-2">
-                          {adminNavItems.map((item) => (
-                          <SidebarButton
-                              key={item.href}
-                              href={item.href}
-                              icon={item.icon}
-                              label={item.label}
-                              isActive={pathname === item.href}
-                              tooltip={item.label}
-                          />
-                          ))}
-                      </div>
-                  </div>
-                  <div className="mt-auto">
-                      <SidebarButton
-                          href="/admin/profile"
-                          icon={<User />}
-                          label="Profile"
-                          isActive={pathname === '/admin/profile'}
-                          tooltip="Profile"
-                      />
-                  </div>
-              </div>
-          </Sidebar>
-          <main className="flex-1 overflow-y-auto">{children}</main>
-        </div>
-      </SidebarProvider>
+      <div className="flex flex-row flex-grow pt-4">
+        {/* You can re-add a sidebar here if needed in the future */}
+        <main className="flex-1 overflow-y-auto px-8">{children}</main>
+      </div>
     </>
   );
 }
-
-    
