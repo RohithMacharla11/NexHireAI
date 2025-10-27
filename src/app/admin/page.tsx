@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -48,12 +47,6 @@ export default function AdminHomePage() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // Fetch users for candidate count and chart data
-            const usersQuery = query(collection(firestore, 'users'));
-            const usersSnapshot = await getDocs(usersQuery);
-            const allUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserType & { createdAt?: any }));
-            const candidateCount = allUsers.filter(u => u.role === 'candidate').length;
-
             // Fetch all assessments for stats and chart
             const assessmentsQuery = query(collectionGroup(firestore, 'assessments'), orderBy('submittedAt', 'desc'));
             const assessmentsSnapshot = await getDocs(assessmentsQuery);
@@ -62,6 +55,12 @@ export default function AdminHomePage() {
             
             const totalScore = allAssessments.reduce((acc, att) => acc + (att.finalScore || 0), 0);
             const avgSuccess = totalAssessments > 0 ? Math.round(totalScore / totalAssessments) : 0;
+
+            // Fetch users for candidate count
+            const usersQuery = query(collection(firestore, 'users'), where('role', '==', 'candidate'));
+            const usersSnapshot = await getDocs(usersQuery);
+            const allUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserType));
+            const candidateCount = allUsers.length;
 
             // Fetch roles
             const rolesQuery = query(collection(firestore, 'roles'));
@@ -77,51 +76,52 @@ export default function AdminHomePage() {
                 monthlyData[month] = { Candidates: 0, Assessments: 0 };
             }
 
-            allUsers.forEach(u => {
-                if (u.role === 'candidate' && u.createdAt?.seconds) {
-                    const month = format(new Date(u.createdAt.seconds * 1000), 'MMM');
-                    if (monthlyData[month]) {
-                        monthlyData[month].Candidates++;
-                    }
-                }
-            });
-
+            const candidateJoinMonth: Record<string, string> = {};
             allAssessments.forEach(a => {
                 if (a.submittedAt) {
                      const month = format(new Date(a.submittedAt), 'MMM');
                      if (monthlyData[month]) {
                         monthlyData[month].Assessments++;
+                        // If we haven't seen this user join yet, mark their first assessment month as their join month
+                        if (!candidateJoinMonth[a.userId]) {
+                            candidateJoinMonth[a.userId] = month;
+                        }
                     }
                 }
             });
 
+            Object.values(candidateJoinMonth).forEach(month => {
+                if(monthlyData[month]) {
+                    monthlyData[month].Candidates++;
+                }
+            });
+
+
             setChartData(Object.entries(monthlyData).map(([name, values]) => ({ name, ...values })));
             
             // Prepare recent activity
-            const newCandidateActivities = allUsers
-                .filter(u => u.role === 'candidate' && u.createdAt?.seconds)
-                .slice(0, 2)
-                .map(u => ({
-                    type: 'new_candidate' as const,
-                    text: `New Candidate: ${u.name}`,
-                    subtext: 'Joined',
-                    timestamp: u.createdAt.seconds * 1000,
-                }));
+            // Since we don't have user names on assessments, we fetch them separately
+            const recentUserIds = [...new Set(allAssessments.slice(0, 5).map(a => a.userId))];
+            const userNames = new Map<string, string>();
+            if(recentUserIds.length > 0) {
+              const usersByIdQuery = query(collection(firestore, 'users'), where('id', 'in', recentUserIds));
+              const usersByIdSnap = await getDocs(usersByIdQuery);
+              usersByIdSnap.forEach(doc => {
+                const userData = doc.data() as UserType;
+                userNames.set(doc.id, userData.name);
+              });
+            }
             
             const roleNames = new Map((await getDocs(collection(firestore, 'roles'))).docs.map(d => [d.id, (d.data() as Role).name]));
 
-            const assessmentActivities = allAssessments.slice(0, 3).map(a => ({
+            const assessmentActivities = allAssessments.slice(0, 5).map(a => ({
                 type: 'assessment_completed' as const,
-                text: `Assessment Completed`,
+                text: `${userNames.get(a.userId) || 'A candidate'} completed an assessment`,
                 subtext: `${roleNames.get(a.roleId) || 'Unknown Role'} - ${Math.round(a.finalScore || 0)}%`,
                 timestamp: a.submittedAt || 0,
             }));
-
-            const combinedActivities = [...newCandidateActivities, ...assessmentActivities]
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 4);
                 
-            setRecentActivity(combinedActivities);
+            setRecentActivity(assessmentActivities);
 
         } catch (error) {
             console.error("Failed to fetch admin dashboard data:", error);
@@ -257,6 +257,3 @@ export default function AdminHomePage() {
     </div>
   );
 }
-
-
-    
