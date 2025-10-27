@@ -54,7 +54,7 @@ export default function ProfilePage() {
         } else {
            if (!isOwnProfile) {
                 toast({ title: "User not found", variant: "destructive" });
-                router.push('/dashboard/admin');
+                router.push('/admin');
                 return;
            }
           data = {
@@ -67,7 +67,7 @@ export default function ProfilePage() {
         }
         setProfileData(data);
 
-        // Fetch assessment history
+        // Fetch assessment history ONLY if the user is a candidate
         if (data.role === 'candidate') {
             const historyQuery = query(collection(firestore, 'users', profileId as string, 'assessments'), orderBy('submittedAt', 'desc'));
             const historySnapshot = await getDocs(historyQuery);
@@ -79,6 +79,9 @@ export default function ProfilePage() {
                 return { ...attempt, roleName };
             }));
             setAssessmentHistory(historyData);
+        } else {
+            // For non-candidates, ensure history is empty
+            setAssessmentHistory([]);
         }
 
       } catch (error) {
@@ -189,11 +192,8 @@ export default function ProfilePage() {
   const hasAnalysis = !!profileData.analysis?.summary;
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary flex items-center justify-center">
-      <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
-      
-      <div className="container mx-auto px-4 md:px-6 flex items-center justify-center">
-         <div className="w-full max-w-6xl h-[85vh] perspective">
+    <div className="relative min-h-full w-full flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl h-[85vh] perspective">
             <motion.div
                 className="w-full h-full preserve-3d"
                 initial={false}
@@ -236,13 +236,12 @@ export default function ProfilePage() {
                 </div>
           </motion.div>
         </div>
-      </div>
     </div>
   );
 }
 
 const ProfileSkeleton = () => (
-    <div className="relative h-[calc(100vh-5rem)] w-full bg-secondary flex items-center justify-center">
+    <div className="relative h-full w-full flex items-center justify-center p-4">
         <div className="container mx-auto px-4 md:px-6 flex items-center justify-center">
             <div className="w-full max-w-6xl">
                 <Skeleton className="h-[70vh] w-full rounded-3xl" />
@@ -250,5 +249,3 @@ const ProfileSkeleton = () => (
         </div>
     </div>
 );
-
-    
