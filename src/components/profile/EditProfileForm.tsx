@@ -34,8 +34,13 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
           achievements: profileData.candidateSpecific?.achievements || [],
       },
       recruiterSpecific: {
-          ...profileData.recruiterSpecific,
-          hiringFocus: profileData.recruiterSpecific?.hiringFocus || [],
+          companyName: profileData.recruiterSpecific?.companyName || 'Your Company Inc.',
+          designation: profileData.recruiterSpecific?.designation || 'Hiring Manager',
+          mobileNumber: profileData.recruiterSpecific?.mobileNumber || '9876543210',
+          companyWebsite: profileData.recruiterSpecific?.companyWebsite || 'https://yourcompany.com',
+          yearsOfExperience: profileData.recruiterSpecific?.yearsOfExperience || 5,
+          hiringFocus: profileData.recruiterSpecific?.hiringFocus || ['react', 'nodejs', 'gcp'],
+          notes: profileData.recruiterSpecific?.notes || 'Specializing in finding top-tier engineering talent.',
       }
     },
   });

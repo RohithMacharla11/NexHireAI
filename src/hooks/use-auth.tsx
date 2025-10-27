@@ -42,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
   const { auth, firestore } = initializeFirebase();
 
   const handleRedirect = (role: RoleType) => {
