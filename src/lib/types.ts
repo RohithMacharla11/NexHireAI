@@ -1,7 +1,5 @@
 
 
-
-
 export type RoleType = 'candidate' | 'recruiter' | 'admin';
 
 export interface Role {
@@ -14,16 +12,21 @@ export interface Role {
 export interface Question {
     id: string;
     questionText: string;
-    type: 'mcq' | 'short' | 'coding';
+    type: 'mcq' | 'short' | 'coding' | 'scenario' | 'debugging';
     options?: string[];
     correctAnswer?: string;
     testCases?: { input: string; expectedOutput: string; }[];
     difficulty: 'Easy' | 'Medium' | 'Hard';
-    timeLimit: number; // in seconds
+    skill: string; 
     tags: string[];
-    skill: string; // The sub-skill it belongs to
     starterCode?: string;
+    // New fields from your schema
+    aiQualityScore?: number;
+    lastReviewedBy?: string;
+    createdBy?: string;
+    createdAt?: number;
 }
+
 
 export interface UserResponse {
     questionId: string;
@@ -46,6 +49,21 @@ export interface Assessment {
     roleName: string;
     questions: Question[];
     totalTimeLimit: number;
+}
+
+export interface AssessmentTemplate {
+    id: string;
+    name: string;
+    role: string;
+    skills: string[];
+    questionCount: number;
+    duration: number; // in minutes
+    difficultyMix: { easy: number; medium: number; hard: number; };
+    questionIds: string[];
+    status: 'active' | 'draft';
+    version: string;
+    createdBy: string;
+    createdAt: number;
 }
 
 export interface AssessmentAttempt {
@@ -156,6 +174,3 @@ export type CodeExecutionResult = {
     time: string;
     memory: string;
 };
-
-
-    

@@ -35,7 +35,7 @@
       "type": "object",
       "properties": {
         "questionText": { "type": "string" },
-        "type": { "type": "string", "enum": ["mcq", "short", "coding"] },
+        "type": { "type": "string", "enum": ["mcq", "short", "coding", "scenario", "debugging"] },
         "options": { "type": "array", "items": { "type": "string" } },
         "correctAnswer": { "type": "string" },
         "testCases": {
@@ -49,11 +49,40 @@
           }
         },
         "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
-        "timeLimit": { "type": "number" },
+        "skill": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
-        "skill": { "type": "string" }
+        "aiQualityScore": { "type": "number" },
+        "lastReviewedBy": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "number" }
       },
-      "required": ["questionText", "type", "difficulty", "timeLimit", "skill"]
+      "required": ["questionText", "type", "difficulty", "skill"]
+    },
+    "AssessmentTemplate": {
+      "title": "Assessment Template",
+      "description": "A configurable template for generating assessments.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "questionCount": { "type": "number" },
+        "duration": { "type": "number" },
+        "difficultyMix": {
+          "type": "object",
+          "properties": {
+            "easy": { "type": "number" },
+            "medium": { "type": "number" },
+            "hard": { "type": "number" }
+          }
+        },
+        "questionIds": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["active", "draft"] },
+        "version": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "role", "status", "questionCount"]
     },
     "AssessmentAttempt": {
       "title": "User Assessment Attempt",
@@ -108,9 +137,13 @@
       "schema": { "$ref": "#/backend/entities/Role" },
       "description": "Stores the master list of professional roles and their sub-skills."
     },
-    "/roles/{roleId}/questions/{questionId}": {
+    "/questionBank/{questionId}": {
       "schema": { "$ref": "#/backend/entities/Question" },
-      "description": "Stores all questions for a given role, organized under that role."
+      "description": "Centralized repository for all assessment questions."
+    },
+    "/assessments/{assessmentId}": {
+      "schema": { "$ref": "#/backend/entities/AssessmentTemplate" },
+      "description": "Stores assessment templates created by admins."
     }
   }
 }
