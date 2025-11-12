@@ -54,15 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = useCallback(async (firebaseUser: FirebaseUser) => {
     setIsProfileLoading(true);
+    const userDocRef = doc(firestore, 'users', firebaseUser.uid);
     try {
-        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         let fullProfile: User;
 
         if (userDoc.exists()) {
             fullProfile = { id: firebaseUser.uid, ...userDoc.data() } as User;
         } else {
-            console.warn(`User document not found for UID: ${firebaseUser.uid}. Creating a default.`);
+            // If the user document doesn't exist, create it. This happens on first login after signup.
+            console.warn(`User document not found for UID: ${firebaseUser.uid}. Creating a default profile.`);
             fullProfile = {
                 id: firebaseUser.uid,
                 email: firebaseUser.email!,
@@ -76,12 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfileData(fullProfile);
         return fullProfile;
     } catch (error) {
-        console.error("Error fetching user data:", error);
-        // If profile fetch fails, still set a minimal user object to avoid being logged out
+        console.error("Error fetching or creating user data:", error);
+        // Fallback in case of firestore error after successful auth
         const minimalUser = {
             id: firebaseUser.uid,
             email: firebaseUser.email!,
-            name: firebaseUser.displayName || "Error User",
+            name: firebaseUser.displayName || "User",
             role: 'candidate' as RoleType,
         };
         setUser(minimalUser);
@@ -97,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
             // User is signed in. Auth is loaded, now fetch profile.
-            setIsLoading(false); // Auth is done!
             await fetchUserData(firebaseUser);
+            setIsLoading(false); // Auth is done!
         } else {
             // User is signed out.
             setUser(null);
