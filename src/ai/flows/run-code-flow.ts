@@ -39,40 +39,45 @@ const runCodeFlow = ai.defineFlow(
   },
   async (input) => {
     
-    const { output } = await ai.generate({
-      prompt: `You are a code execution engine simulator. Your task is to evaluate a single code submission against its test cases and return a structured JSON object containing the results.
+    try {
+        const { output } = await ai.generate({
+          prompt: `You are a code execution engine simulator. Your task is to evaluate a single code submission against its test cases and return a structured JSON object containing the results.
 
-      Iterate through all of the provided test cases.
-      - For each test case, determine if the code's output matches the expected output.
-      - Set the status to 'Passed', 'Failed', or 'Error'.
-      - If the submission's code has syntax errors or would likely cause a runtime error, set the status for all its test cases to 'Error' and provide a brief error message in the 'output' field.
-      - Simulate a realistic execution time and memory usage for each test case.
-      
-      Your response MUST be a valid JSON array of test case result objects. Do not include any extra text, commentary, or markdown formatting.
+          Iterate through all of the provided test cases.
+          - For each test case, determine if the code's output matches the expected output.
+          - Set the status to 'Passed', 'Failed', or 'Error'.
+          - If the submission's code has syntax errors or would likely cause a runtime error, set the status for all its test cases to 'Error' and provide a brief error message in the 'output' field.
+          - Simulate a realistic execution time and memory usage for each test case.
+          
+          Your response MUST be a valid JSON array of test case result objects. Do not include any extra text, commentary, or markdown formatting.
 
-      Submission to evaluate:
-      ${JSON.stringify(input, null, 2)}
-      `,
-      output: {
-        schema: RunCodeOutputSchema,
-      },
-      config: { 
-        temperature: 0.1,
-     }
-    });
+          Submission to evaluate:
+          ${JSON.stringify(input, null, 2)}
+          `,
+          output: {
+            schema: RunCodeOutputSchema,
+          },
+          config: { 
+            temperature: 0.1,
+         }
+        });
 
-    if (!output) {
-      // Provide a fallback error if the model completely fails to evaluate a submission
-      return input.testCases.map(tc => ({
-          status: 'Error',
-          output: 'AI evaluation failed for this submission.',
-          expectedOutput: tc.expectedOutput,
-          time: '0ms',
-          memory: '0MB',
-      }));
+        if (!output) {
+            throw new Error("AI failed to return an output.");
+        }
+        
+        return output;
+    } catch (error) {
+        console.error("AI evaluation in runCodeFlow failed:", error);
+        // Provide a graceful fallback if the model completely fails to evaluate a submission
+        return input.testCases.map(tc => ({
+            status: 'Error',
+            output: 'AI evaluation service is currently unavailable. Please try again in a moment.',
+            expectedOutput: tc.expectedOutput,
+            time: '0ms',
+            memory: '0MB',
+        }));
     }
-    
-    return output;
   }
 );
 
