@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
@@ -69,7 +70,7 @@ export default function AIJobRecommenderPage() {
             console.error("Error running resume analysis:", error);
             toast({
                 title: 'Analysis Failed',
-                description: (error as Error).message || "An unknown error occurred.",
+                description: "The AI service is currently busy. Please try again in a moment.",
                 variant: 'destructive',
             });
         } finally {
