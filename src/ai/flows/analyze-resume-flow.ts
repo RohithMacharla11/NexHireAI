@@ -78,8 +78,27 @@ const analyzeResumeFlow = ai.defineFlow(
     outputSchema: AnalyzeResumeOutputSchema,
   },
   async (input) => {
-    // No model override needed, will use the default from src/ai/genkit.ts
-    const { output } = await prompt(input);
+    const { output } = await ai.generate({
+        prompt: `You are a helpful career coach and resume analysis expert.
+    Based on the provided skills, bio, and experience level, perform a detailed analysis.
+
+    Candidate Information:
+    - Experience Level: ${input.experienceLevel}
+    - Skills: ${input.skills.join(', ')}
+    - Bio: ${input.bio}
+
+    Your task is to generate a concise analysis.
+    - Recommend the top 3 job roles that best match the candidate's profile. Provide a match score for each.
+    - Calculate an overall "readinessScore" from 0-100.
+    - Identify the top 3 gaps in their skillset for their most likely career path (gapAnalysis).
+    - Suggest 2-3 actionable learning tasks to fill those gaps, including an estimated time in weeks.
+    - Provide a basic resume health check (assume contact info and skills are present if bio and skills are provided, but check if project work is mentioned in the bio).
+    
+    Provide the output in the required JSON format.
+    `,
+        output: { schema: AnalyzeResumeOutputSchema },
+        config: { temperature: 0.3 },
+    });
     if (!output) {
       throw new Error("Analysis failed to produce an output.");
     }
