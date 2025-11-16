@@ -1,8 +1,5 @@
 
 <div align="center">
-  <a href="#">
-    <img src="https://raw.githubusercontent.com/firebase/genkit/main/docs/static/logo.png" alt="Logo" width="120" height="120">
-  </a>
 
   <h1 align="center">NexHireAI</h1>
 
@@ -36,15 +33,6 @@
 ## 🚀 About NexHireAI
 
 **NexHireAI** is a revolutionary platform that leverages cutting-edge generative AI to create dynamic, adaptive skill assessments. We move beyond static questionnaires to simulate real-world challenges, providing deep, actionable insights into a candidate's true potential and job readiness. Our mission is to empower both individuals seeking to prove their skills and businesses looking to build elite teams.
-
-<br/>
-
-<div align="center">
-  <a href="#">
-    <!-- Replace with a GIF of your app in action -->
-    <img src="https://placehold.co/800x400/0c0a09/9c27b0?text=App+Screenshot+or+GIF" alt="NexHireAI App Preview">
-  </a>
-</div>
 
 <br/>
 
