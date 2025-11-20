@@ -51,6 +51,7 @@ export default function NewAssessmentPage() {
     });
 
     const questionCount = watch('questionCount');
+    const duration = watch('duration');
     const difficultyMix = watch('difficultyMix');
 
     useEffect(() => {
@@ -164,7 +165,7 @@ export default function NewAssessmentPage() {
                                 />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="duration">Duration (in minutes, approx. {Math.round(duration/questionCount * 10)/10} min/q)</Label>
+                                <Label htmlFor="duration">Duration (in minutes, approx. {questionCount > 0 ? Math.round(duration/questionCount * 10)/10 : 0} min/q)</Label>
                                  <Controller
                                     name="duration"
                                     control={control}
