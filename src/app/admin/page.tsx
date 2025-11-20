@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,10 +6,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, limit, orderBy, collectionGroup, getCountFromServer, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { User as UserType, Role, AssessmentAttempt } from '@/lib/types';
-import { format, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 
 const containerVariants = {
     hidden: { opacity: 1 },
@@ -48,33 +47,43 @@ export default function AdminHomePage() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // --- Fetch all data in parallel ---
-            const assessmentsQuery = query(collectionGroup(firestore, 'assessments'), orderBy('submittedAt', 'desc'));
+            // --- Fetch users and roles first ---
             const usersQuery = query(collection(firestore, 'users'), where('role', '==', 'candidate'));
             const rolesQuery = query(collection(firestore, 'roles'));
 
-            const [assessmentsSnapshot, usersSnapshot, rolesSnapshot] = await Promise.all([
-                getDocs(assessmentsQuery),
+            const [usersSnapshot, rolesSnapshot] = await Promise.all([
                 getDocs(usersQuery),
-                getDocs(rolesQuery)
+                getDocs(rolesSnapshot)
             ]);
 
+            const candidates = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserType));
+            const candidateCount = candidates.length;
+
+            // --- Fetch assessments for all candidates ---
+            let allAssessments: AssessmentAttempt[] = [];
+            if (candidates.length > 0) {
+                const assessmentPromises = candidates.map(c => 
+                    getDocs(query(collection(firestore, `users/${c.id}/assessments`), orderBy('submittedAt', 'desc')))
+                );
+                const assessmentSnapshots = await Promise.all(assessmentPromises);
+                assessmentSnapshots.forEach((snapshot, index) => {
+                    snapshot.docs.forEach(doc => {
+                        allAssessments.push({ 
+                            userId: candidates[index].id,
+                            id: doc.id, 
+                            ...doc.data() 
+                        } as AssessmentAttempt);
+                    });
+                });
+            }
+
+            allAssessments.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+
             // --- Process Assessments ---
-            const allAssessments = assessmentsSnapshot.docs.map(doc => {
-              const data = doc.data();
-              // This is a workaround to get the userId from the path
-              const path = doc.ref.path;
-              const userId = path.split('/')[1];
-              return { id: doc.id, userId, ...data } as AssessmentAttempt;
-            });
-            
             const totalAssessments = allAssessments.length;
             const totalScore = allAssessments.reduce((acc, att) => acc + (att.finalScore || 0), 0);
             const avgSuccess = totalAssessments > 0 ? Math.round(totalScore / totalAssessments) : 0;
             
-            // --- Process Users ---
-            const candidateCount = usersSnapshot.size;
-
             // --- Process Roles ---
             const totalRoles = rolesSnapshot.size;
 
@@ -98,19 +107,9 @@ export default function AdminHomePage() {
             
             // --- Prepare Recent Activity ---
             const recentAssessments = allAssessments.slice(0, 5);
-            const userIds = [...new Set(recentAssessments.map(a => a.userId))];
-            
-            const userNames: Map<string, string> = new Map();
-            if (userIds.length > 0) {
-              const userDocs = await Promise.all(userIds.map(id => getDoc(doc(firestore, 'users', id))));
-              userDocs.forEach(docSnap => {
-                if(docSnap.exists()){
-                  userNames.set(docSnap.id, (docSnap.data() as UserType).name);
-                }
-              });
-            }
-
+            const userNames = new Map(candidates.map(c => [c.id, c.name]));
             const roleNames = new Map(rolesSnapshot.docs.map(d => [d.id, (d.data() as Role).name]));
+            
             const assessmentActivities = recentAssessments.map(a => ({
                 type: 'assessment_completed' as const,
                 text: `${userNames.get(a.userId) || 'A candidate'} completed an assessment`,
@@ -252,3 +251,5 @@ export default function AdminHomePage() {
     </div>
   );
 }
+
+    
