@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import type { Role } from '@/lib/types';
 import { Loader2, PlusCircle, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 const containerVariants = {
     hidden: { opacity: 1 },
@@ -22,6 +23,7 @@ const itemVariants = {
 
 export default function RolesPage() {
     const { firestore } = initializeFirebase();
+    const router = useRouter();
     const [roles, setRoles] = useState<Role[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -47,7 +49,7 @@ export default function RolesPage() {
                  <div className="flex justify-between items-center mb-8">
                     <h1 className="text-4xl font-bold">Roles & Skills</h1>
                     <div className="flex gap-2">
-                         <Button><PlusCircle className="mr-2 h-4 w-4" /> Create New Role</Button>
+                         <Button onClick={() => router.push('/admin/roles/new')}><PlusCircle className="mr-2 h-4 w-4" /> Create New Role</Button>
                     </div>
                 </div>
             </motion.div>
