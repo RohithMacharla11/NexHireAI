@@ -23,7 +23,7 @@ export function QuestionPreview({ question, index, onEdit }: QuestionPreviewProp
     }
 
     return (
-        <Card className="bg-background/70">
+        <Card className="bg-background/70 flex-grow">
             <CardHeader className="flex-row justify-between items-start">
                 <div>
                     <CardTitle className="text-lg">Q{index + 1}: {question.questionText}</CardTitle>

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,7 @@ import { collection, getDocs, query, addDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { generateAssessmentTemplate } from '@/ai/flows/generate-assessment-template-flow';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, ArrowLeft, Wand2, Save, Pencil } from 'lucide-react';
+import { Loader2, ArrowLeft, Wand2, Save, Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import type { Role, Question, AssessmentTemplate } from '@/lib/types';
 import {
   AlertDialog,
@@ -60,11 +61,14 @@ export default function NewAssessmentPage() {
     const [isSaving, setIsSaving] = useState(false);
     
     const [view, setView] = useState<ViewState>('config');
-    const [generatedTemplate, setGeneratedTemplate] = useState<(AssessmentTemplate & { questions: Question[] }) | null>(null);
+    const [activeTab, setActiveTab] = useState('generate');
+
+    const [draftTemplate, setDraftTemplate] = useState<(AssessmentTemplate & { questions: Question[] }) | null>(null);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+    const [isEditingNew, setIsEditingNew] = useState(false);
 
 
-    const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<AssessmentFormData>({
+    const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<AssessmentFormData>({
         resolver: zodResolver(assessmentSchema),
         defaultValues: {
             questionCount: 30,
@@ -77,7 +81,7 @@ export default function NewAssessmentPage() {
     const duration = watch('duration');
     const difficultyMix = watch('difficultyMix');
 
-    useState(() => {
+    useEffect(() => {
         if (!firestore) return;
         const fetchRoles = async () => {
             setIsLoadingRoles(true);
@@ -87,8 +91,8 @@ export default function NewAssessmentPage() {
             setIsLoadingRoles(false);
         };
         fetchRoles();
-    });
-
+    }, [firestore]);
+    
     const onGenerate = (data: AssessmentFormData) => {
         setIsGenerating(true);
         const selectedRole = roles.find(r => r.id === data.roleId);
@@ -108,7 +112,7 @@ export default function NewAssessmentPage() {
             duration: data.duration,
             difficultyMix: data.difficultyMix,
         }).then((template) => {
-            setGeneratedTemplate(template);
+            setDraftTemplate(template);
             setView('preview');
             toast({ title: "Draft Generated!", description: "Review the questions below before saving." });
         }).catch((error) => {
@@ -120,36 +124,93 @@ export default function NewAssessmentPage() {
         });
     };
 
-    const handleUpdateQuestion = (updatedQuestion: Question) => {
-        if (!generatedTemplate) return;
+    const handleProceedToManual = () => {
+        const data = getValues();
+        const selectedRole = roles.find(r => r.id === data.roleId);
+         if (!data.name || !data.roleId) {
+            toast({ title: 'Missing Details', description: 'Please provide an Assessment Name and Target Role before proceeding.', variant: 'destructive' });
+            return;
+        }
         
-        const updatedQuestions = generatedTemplate.questions.map(q => 
-            q.id === updatedQuestion.id ? updatedQuestion : q
-        );
-        
-        setGeneratedTemplate({
-            ...generatedTemplate,
-            questions: updatedQuestions
+        setDraftTemplate({
+            id: uuidv4(),
+            name: data.name,
+            role: selectedRole!.name,
+            roleId: data.roleId,
+            duration: data.duration,
+            skills: selectedRole!.subSkills,
+            questionCount: 0,
+            difficultyMix: { easy: 0, medium: 0, hard: 0 },
+            questionIds: [],
+            questions: [],
+            status: 'draft',
+            version: '1.0',
+            createdBy: 'Admin', // Replace with actual admin user
+            createdAt: Date.now(),
         });
-        setEditingQuestion(null); // Close the dialog
-        toast({ title: "Question Updated", description: "The question has been successfully modified." });
+        setView('manual');
+    }
+
+    const handleAddNewQuestion = () => {
+        setIsEditingNew(true);
+        setEditingQuestion({
+            id: uuidv4(),
+            questionText: '',
+            type: 'mcq',
+            difficulty: 'Medium',
+            skill: '',
+            tags: [],
+            options: ['', '', '', ''],
+            correctAnswer: '',
+            testCases: [],
+            starterCode: '',
+            timeLimit: 60,
+        });
+    };
+    
+    const handleUpdateQuestion = (updatedQuestion: Question) => {
+        if (!draftTemplate) return;
+        
+        const questionExists = draftTemplate.questions.some(q => q.id === updatedQuestion.id);
+
+        const updatedQuestions = questionExists
+            ? draftTemplate.questions.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
+            : [...draftTemplate.questions, updatedQuestion];
+        
+        setDraftTemplate({
+            ...draftTemplate,
+            questions: updatedQuestions,
+            questionCount: updatedQuestions.length,
+        });
+
+        setEditingQuestion(null);
+        setIsEditingNew(false);
+        toast({ title: isEditingNew ? "Question Added" : "Question Updated", description: "The change has been saved to this draft." });
     };
 
+    const handleDeleteQuestion = (questionId: string) => {
+        if (!draftTemplate) return;
+        setDraftTemplate({
+            ...draftTemplate,
+            questions: draftTemplate.questions.filter(q => q.id !== questionId),
+            questionCount: draftTemplate.questionCount - 1,
+        });
+        toast({ title: "Question Removed", variant: 'destructive' });
+    }
+
     const handleSave = async () => {
-        if (!generatedTemplate) return;
+        if (!draftTemplate) return;
         setIsSaving(true);
         try {
-            // We need to strip the full questions out before saving,
-            // as they are large and only the IDs are needed in the final template doc.
-            // The questions themselves will be saved to the questionBank.
-            const { questions, ...templateToSave } = generatedTemplate;
+            const { questions, ...templateToSave } = draftTemplate;
+            const finalTemplate = {
+                ...templateToSave,
+                questionIds: questions.map(q => q.id),
+                // This is where you would also save the questions to the questionBank
+            }
             
-            // In a real scenario, you'd batch write the questions to `questionBank`
-            // and then save the template with just the IDs.
-            // For now, we'll just save the template as is for simplicity.
-            
-            await addDoc(collection(firestore, 'assessments'), templateToSave);
-            toast({ title: "Assessment Created!", description: `${generatedTemplate.name} has been added to the templates.` });
+            await addDoc(collection(firestore, 'assessments'), finalTemplate);
+            toast({ title: "Assessment Created!", description: `${draftTemplate.name} has been added to the templates.` });
             router.push('/admin/assessments');
         } catch(error) {
             console.error("Error saving assessment:", error);
@@ -168,16 +229,19 @@ export default function NewAssessmentPage() {
         });
     };
     
+    const currentView = view === 'manual' ? 'manual' : 'config';
+    const currentTitle = view === 'manual' ? `Building "${draftTemplate?.name}"` : view === 'preview' ? `Previewing "${draftTemplate?.name}"` : 'Create New Assessment Template';
+
     return (
         <div className="p-8">
-            <Button variant="ghost" onClick={() => view === 'preview' ? setView('config') : router.back()} className="mb-4">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to {view === 'preview' ? 'Configuration' : 'Assessments'}
+            <Button variant="ghost" onClick={() => view === 'config' ? router.back() : setView('config')} className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to {view === 'config' ? 'Assessments' : 'Configuration'}
             </Button>
-            <h1 className="text-4xl font-bold mb-2">Create New Assessment Template</h1>
+            <h1 className="text-4xl font-bold mb-2">{currentTitle}</h1>
             <p className="text-muted-foreground mb-8">Define parameters and questions for a new assessment.</p>
             
              <AnimatePresence mode="wait">
-                {view === 'config' && (
+                {currentView === 'config' && (
                      <motion.div
                         key="config"
                         initial={{ opacity: 0, x: -50 }}
@@ -187,7 +251,7 @@ export default function NewAssessmentPage() {
                     >
                         <form onSubmit={handleSubmit(onGenerate)}>
                             <Card className="max-w-4xl mx-auto bg-card/60 backdrop-blur-sm border-border/20 shadow-lg">
-                                <Tabs defaultValue="generate">
+                                <Tabs defaultValue="generate" value={activeTab} onValueChange={setActiveTab}>
                                     <TabsList className="grid w-full grid-cols-2">
                                         <TabsTrigger value="generate">Generate with AI</TabsTrigger>
                                         <TabsTrigger value="manual">Create Manually</TabsTrigger>
@@ -284,7 +348,6 @@ export default function NewAssessmentPage() {
                                                 <div className="space-y-2">
                                                     <Label htmlFor="name_manual">Assessment Name</Label>
                                                     <Input id="name_manual" {...register('name')} placeholder="e.g., Senior Frontend Developer Screening" />
-                                                    {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="roleId_manual">Target Role</Label>
@@ -306,19 +369,15 @@ export default function NewAssessmentPage() {
                                                             </Select>
                                                         )}
                                                     />
-                                                    {errors.roleId && <p className="text-red-500 text-sm">{errors.roleId.message}</p>}
                                                 </div>
                                             </div>
                                              <div className="space-y-2">
                                                 <Label htmlFor="duration_manual">Duration (minutes)</Label>
-                                                <Input id="duration_manual" type="number" {...register('duration')} />
-                                            </div>
-                                              <div className="text-center p-4 border-dashed border-2 rounded-md">
-                                                <p className="text-muted-foreground">The manual question editor will appear here.</p>
+                                                <Input id="duration_manual" type="number" {...register('duration', { valueAsNumber: true })} />
                                             </div>
                                          </CardContent>
                                         <CardFooter>
-                                            <Button type="button" onClick={() => setView('manual')}>
+                                            <Button type="button" onClick={handleProceedToManual}>
                                                 <Pencil className="mr-2 h-4 w-4" />
                                                 Proceed to Add Questions
                                             </Button>
@@ -330,7 +389,7 @@ export default function NewAssessmentPage() {
                     </motion.div>
                 )}
                 
-                 {view === 'manual' && (
+                 {currentView === 'manual' && draftTemplate && (
                      <motion.div
                         key="manual-view"
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -338,27 +397,61 @@ export default function NewAssessmentPage() {
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                      >
                         <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-lg">
-                             <CardHeader>
+                            <CardHeader>
                                 <CardTitle>Manually Add Questions</CardTitle>
                                 <CardDescription>
-                                    Add, edit, and reorder questions for your assessment.
+                                    Add, edit, and reorder questions for your assessment. You have added {draftTemplate.questions.length} questions so far.
                                 </CardDescription>
                             </CardHeader>
-                             <CardContent className="h-96 flex items-center justify-center border-dashed border-2 rounded-md">
-                                <p className="text-muted-foreground">Full manual question editor coming soon.</p>
-                            </CardContent>
-                            <CardFooter className="flex justify-end gap-2 mt-4">
-                                <Button variant="ghost" onClick={() => setView('config')}>Back to Config</Button>
-                                <Button disabled>
-                                    <Save className="mr-2 h-4 w-4" /> Save Template
+                            <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto p-4 border rounded-md">
+                                 {draftTemplate.questions.map((q, i) => (
+                                    <div key={q.id} className="flex items-start gap-2">
+                                        <QuestionPreview 
+                                            question={q} 
+                                            index={i} 
+                                            onEdit={() => setEditingQuestion(q)} 
+                                        />
+                                        <Button variant="destructive" size="icon" className="mt-1" onClick={() => handleDeleteQuestion(q.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button variant="outline" className="w-full border-dashed" onClick={handleAddNewQuestion}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Question
                                 </Button>
+                            </CardContent>
+                            <CardFooter className="flex justify-between items-center mt-4">
+                                <Button variant="ghost" onClick={() => setView('config')}>Back to Config</Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button disabled={isSaving || draftTemplate.questions.length === 0}>
+                                            <Save className="mr-2 h-4 w-4" /> Save Template
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirm Save</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will create a new assessment template with {draftTemplate.questions.length} questions.
+                                                Are you sure you want to save?
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleSave} disabled={isSaving}>
+                                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                 Confirm & Save
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </CardFooter>
                         </Card>
                     </motion.div>
                 )}
 
 
-                 {view === 'preview' && generatedTemplate && (
+                 {view === 'preview' && draftTemplate && (
                      <motion.div
                         key="preview"
                         initial={{ opacity: 0, x: 50 }}
@@ -370,21 +463,25 @@ export default function NewAssessmentPage() {
                             <CardHeader>
                                 <CardTitle>2. Review & Save</CardTitle>
                                 <CardDescription>
-                                    The AI has generated {generatedTemplate.questions.length} questions for the assessment "{generatedTemplate.name}".
+                                    The AI has generated {draftTemplate.questions.length} questions for the assessment "{draftTemplate.name}".
                                     Review and edit them below before saving the template.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto p-4 border rounded-md">
-                                {generatedTemplate.questions.map((q, i) => (
-                                    <QuestionPreview 
-                                        key={q.id} 
-                                        question={q} 
-                                        index={i} 
-                                        onEdit={() => setEditingQuestion(q)} 
-                                    />
+                                {draftTemplate.questions.map((q, i) => (
+                                     <div key={q.id} className="flex items-start gap-2">
+                                        <QuestionPreview 
+                                            question={q} 
+                                            index={i} 
+                                            onEdit={() => setEditingQuestion(q)} 
+                                        />
+                                        <Button variant="destructive" size="icon" className="mt-1" onClick={() => handleDeleteQuestion(q.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 ))}
                             </CardContent>
-                            <CardFooter className="flex justify-end gap-2 mt-4">
+                            <CardFooter className="flex justify-between items-center mt-4">
                                 <Button variant="ghost" onClick={() => setView('config')}>Back to Config</Button>
                                  <AlertDialog>
                                     <AlertDialogTrigger asChild>
