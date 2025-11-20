@@ -64,7 +64,7 @@ export interface AssessmentTemplate {
     duration: number; // in minutes
     difficultyMix: { easy: number; medium: number; hard: number; };
     questionIds: string[];
-    questions: Question[]; // Now storing full questions
+    questions?: Question[]; // Now storing full questions, but optional for backward compatibility
     status: 'active' | 'draft';
     version: string;
     createdBy: string;
