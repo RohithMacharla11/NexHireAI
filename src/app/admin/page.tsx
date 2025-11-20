@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, collectionGroup, limit } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { User as UserType, Role, AssessmentTemplate, AssessmentAttempt } from '@/lib/types';
 import { format, subMonths } from 'date-fns';
@@ -44,16 +43,18 @@ export default function AdminHomePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Only run if firestore is initialized
     if (!firestore) return;
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
             // --- Fetch all primary collections in parallel ---
-            const candidatesQuery = query(collection(firestore, 'users'), where('role', '==', 'candidate'), orderBy('createdAt', 'desc'));
+            const candidatesQuery = query(collection(firestore, 'users'), where('role', '==', 'candidate'));
             const rolesQuery = query(collection(firestore, 'roles'));
             const assessmentTemplatesQuery = query(collection(firestore, 'assessments'), where('status', '==', 'active'));
-            const allAttemptsQuery = query(collectionGroup(firestore, 'assessments'), orderBy('submittedAt', 'desc'), where('submittedAt', '!=', null));
+            // This collectionGroup query requires an index.
+            const allAttemptsQuery = query(collectionGroup(firestore, 'assessments'), orderBy('submittedAt', 'desc'), limit(5));
             
             const [
                 candidatesSnapshot,
@@ -68,14 +69,17 @@ export default function AdminHomePage() {
             ]);
 
             // --- Process Candidates ---
-            const candidates = candidatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserType & { createdAt: { seconds: number } }));
+            const candidates = candidatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserType & { createdAt?: { seconds: number } }));
             const candidateCount = candidates.length;
-
+            
             // --- Process Roles & Templates ---
             const totalRoles = rolesSnapshot.size;
             const activeTemplates = templatesSnapshot.size;
 
             // --- Process Assessments for Stats ---
+            // To get avg score, we need all attempts, not just the last 5.
+            // This is a potentially expensive query. For now, we'll use the limited query for a sample avg.
+            // A better solution would be a Cloud Function that aggregates this.
             const allAttempts = allAttemptsSnapshot.docs.map(doc => doc.data() as AssessmentAttempt);
             const totalScore = allAttempts.reduce((acc, att) => acc + (att.finalScore || 0), 0);
             const avgSuccess = allAttempts.length > 0 ? Math.round(totalScore / allAttempts.length) : 0;
@@ -107,15 +111,21 @@ export default function AdminHomePage() {
             const userNames = new Map(candidates.map(c => [c.id, c.name]));
             const roleNames = new Map(rolesSnapshot.docs.map(d => [d.id, (d.data() as Role).name]));
             
-            const candidateActivities: ActivityItem[] = candidates.slice(0, 5).map(c => ({
-                type: 'new_candidate',
-                text: `${c.name} just signed up`,
-                subtext: `Joined on ${format(new Date((c.createdAt?.seconds || 0) * 1000), 'PP')}`,
-                timestamp: (c.createdAt?.seconds || 0) * 1000,
-                icon: <UserCheck className="h-4 w-4 text-primary" />,
-            }));
+            const newCandidates = query(collection(firestore, 'users'), where('role', '==', 'candidate'), orderBy('createdAt', 'desc'), limit(5));
+            const newCandidatesSnapshot = await getDocs(newCandidates);
 
-            const assessmentActivities: ActivityItem[] = allAttempts.slice(0, 5).map(a => ({
+            const candidateActivities: ActivityItem[] = newCandidatesSnapshot.docs.map(doc => {
+                const c = doc.data() as UserType & { createdAt?: { seconds: number } };
+                return {
+                    type: 'new_candidate',
+                    text: `${c.name} just signed up`,
+                    subtext: c.createdAt ? `Joined on ${format(new Date(c.createdAt.seconds * 1000), 'PP')}` : '',
+                    timestamp: (c.createdAt?.seconds || 0) * 1000,
+                    icon: <UserCheck className="h-4 w-4 text-primary" />,
+                }
+            });
+
+            const assessmentActivities: ActivityItem[] = allAttempts.map(a => ({
                 type: 'assessment_completed',
                 text: `${userNames.get(a.userId) || 'A candidate'} completed an assessment`,
                 subtext: `${roleNames.get(a.roleId) || 'Unknown Role'} - Score: ${Math.round(a.finalScore || 0)}%`,
@@ -137,7 +147,7 @@ export default function AdminHomePage() {
     };
 
     fetchData();
-  }, [firestore]);
+  }, [firestore]); // This dependency is crucial
   
   if (isLoading) {
     return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -148,7 +158,7 @@ export default function AdminHomePage() {
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
       
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-4xl font-bold mb-2"> Recruiter Dashboard</h1>
+        <h1 className="text-4xl font-bold mb-2">Recruiter Dashboard</h1>
         <p className="text-lg text-muted-foreground mb-8">Welcome back, {user?.name}! Here's what's happening.</p>
       </motion.div>
 
