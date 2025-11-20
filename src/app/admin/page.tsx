@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,11 +50,12 @@ export default function AdminHomePage() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // --- Fetch all primary collections in parallel ---
+            // --- 1. Fetch all primary collections in parallel ---
             const candidatesQuery = query(collection(firestore, 'users'), where('role', '==', 'candidate'));
             const rolesQuery = query(collection(firestore, 'roles'));
             const assessmentTemplatesQuery = query(collection(firestore, 'assessments'), where('status', '==', 'active'));
-            // This collectionGroup query requires an index.
+            // Use a collection group query to get the last 5 attempts across all users.
+            // This requires a Firestore index. If it fails, the catch block will show an error.
             const allAttemptsQuery = query(collectionGroup(firestore, 'assessments'), orderBy('submittedAt', 'desc'), limit(5));
             
             const [
@@ -68,21 +70,14 @@ export default function AdminHomePage() {
                 getDocs(allAttemptsQuery),
             ]);
 
-            // --- Process Candidates ---
-            const candidates = candidatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserType & { createdAt?: { seconds: number } }));
-            const candidateCount = candidates.length;
-            
-            // --- Process Roles & Templates ---
+            // --- 2. Process Data for Stats Cards ---
+            const candidatesData = candidatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserType & { createdAt?: { seconds: number } }));
+            const candidateCount = candidatesData.length;
             const totalRoles = rolesSnapshot.size;
             const activeTemplates = templatesSnapshot.size;
-
-            // --- Process Assessments for Stats ---
-            // To get avg score, we need all attempts, not just the last 5.
-            // This is a potentially expensive query. For now, we'll use the limited query for a sample avg.
-            // A better solution would be a Cloud Function that aggregates this.
-            const allAttempts = allAttemptsSnapshot.docs.map(doc => doc.data() as AssessmentAttempt);
-            const totalScore = allAttempts.reduce((acc, att) => acc + (att.finalScore || 0), 0);
-            const avgSuccess = allAttempts.length > 0 ? Math.round(totalScore / allAttempts.length) : 0;
+            const allAttemptsData = allAttemptsSnapshot.docs.map(doc => doc.data() as AssessmentAttempt);
+            const totalScore = allAttemptsData.reduce((acc, att) => acc + (att.finalScore || 0), 0);
+            const avgSuccess = allAttemptsData.length > 0 ? Math.round(totalScore / allAttemptsData.length) : 0;
             
             setStats({ 
                 candidates: candidateCount, 
@@ -91,15 +86,17 @@ export default function AdminHomePage() {
                 avgSuccess 
             });
 
-            // --- Prepare Candidate Growth Chart Data (last 6 months) ---
+            // --- 3. Prepare Candidate Growth Chart Data (last 6 months) ---
             const monthlyData: Record<string, { Candidates: number }> = {};
             for (let i = 5; i >= 0; i--) {
                 const month = format(subMonths(new Date(), i), 'MMM');
                 monthlyData[month] = { Candidates: 0 };
             }
-            candidates.forEach(c => {
-                if (c.createdAt?.seconds) {
-                     const month = format(new Date(c.createdAt.seconds * 1000), 'MMM');
+            candidatesData.forEach(c => {
+                // Check if createdAt exists and is a Firestore timestamp
+                if (c.createdAt && typeof c.createdAt.seconds === 'number') {
+                     const joinDate = new Date(c.createdAt.seconds * 1000);
+                     const month = format(joinDate, 'MMM');
                      if (monthlyData[month]) {
                         monthlyData[month].Candidates++;
                     }
@@ -107,25 +104,23 @@ export default function AdminHomePage() {
             });
             setChartData(Object.entries(monthlyData).map(([name, values]) => ({ name, ...values })));
             
-            // --- Prepare Unified Recent Activity Feed ---
-            const userNames = new Map(candidates.map(c => [c.id, c.name]));
+            // --- 4. Prepare Unified Recent Activity Feed ---
+            const userNames = new Map(candidatesData.map(c => [c.id, c.name]));
             const roleNames = new Map(rolesSnapshot.docs.map(d => [d.id, (d.data() as Role).name]));
             
-            const newCandidates = query(collection(firestore, 'users'), where('role', '==', 'candidate'), orderBy('createdAt', 'desc'), limit(5));
-            const newCandidatesSnapshot = await getDocs(newCandidates);
-
-            const candidateActivities: ActivityItem[] = newCandidatesSnapshot.docs.map(doc => {
-                const c = doc.data() as UserType & { createdAt?: { seconds: number } };
-                return {
+            const candidateActivities: ActivityItem[] = candidatesData
+                .filter(c => c.createdAt?.seconds)
+                .sort((a,b) => b.createdAt!.seconds - a.createdAt!.seconds)
+                .slice(0, 5) // Take the 5 most recent candidates
+                .map(c => ({
                     type: 'new_candidate',
                     text: `${c.name} just signed up`,
                     subtext: c.createdAt ? `Joined on ${format(new Date(c.createdAt.seconds * 1000), 'PP')}` : '',
                     timestamp: (c.createdAt?.seconds || 0) * 1000,
                     icon: <UserCheck className="h-4 w-4 text-primary" />,
-                }
-            });
+                }));
 
-            const assessmentActivities: ActivityItem[] = allAttempts.map(a => ({
+            const assessmentActivities: ActivityItem[] = allAttemptsData.map(a => ({
                 type: 'assessment_completed',
                 text: `${userNames.get(a.userId) || 'A candidate'} completed an assessment`,
                 subtext: `${roleNames.get(a.roleId) || 'Unknown Role'} - Score: ${Math.round(a.finalScore || 0)}%`,
@@ -141,13 +136,14 @@ export default function AdminHomePage() {
 
         } catch (error) {
             console.error("Failed to fetch admin dashboard data:", error);
+            // You could set an error state here to show a message to the user
         } finally {
             setIsLoading(false);
         }
     };
 
     fetchData();
-  }, [firestore]); // This dependency is crucial
+  }, [firestore]); // Dependency on firestore ensures it runs once initialized.
   
   if (isLoading) {
     return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -272,3 +268,5 @@ export default function AdminHomePage() {
     </div>
   );
 }
+
+    
