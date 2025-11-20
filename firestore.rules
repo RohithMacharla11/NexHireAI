@@ -51,6 +51,14 @@ service cloud.firestore {
     }
     
     /**
+     * @description Rule to allow admins to query the 'assessments' collection group.
+     * This is required for the admin dashboard to fetch recent activity across all users.
+     */
+    match /{path=**}/assessments/{assessmentId} {
+      allow get, list: if isRecruiterOrAdmin();
+    }
+
+    /**
      * @description Public roles, readable by all authenticated users, writable only by admins/recruiters.
      * This is necessary so candidates can see the list of available assessments.
      */
