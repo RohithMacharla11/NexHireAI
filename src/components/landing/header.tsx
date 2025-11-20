@@ -14,14 +14,23 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '../theme-toggle';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '../ui/skeleton';
-import { User, LayoutDashboard, NotebookPen, Shield } from 'lucide-react';
+import { User, LayoutDashboard, NotebookPen, Shield, ChevronDown, BookCopy } from 'lucide-react';
 import { Navigation } from './navigation';
 import { usePathname } from 'next/navigation';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+import type { AssessmentTemplate } from '@/lib/types';
+import { useAssessmentStore } from '@/hooks/use-assessment-store';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
   const { user, isLoading, logout } = useAuth();
@@ -29,12 +38,60 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const isAdminSection = pathname.startsWith('/admin');
+  const [assessmentTemplates, setAssessmentTemplates] = useState<AssessmentTemplate[]>([]);
+  const { firestore } = initializeFirebase();
+  const assessmentStore = useAssessmentStore();
+  const router = useRouter();
+
 
   useEffect(() => {
     return scrollY.on('change', (latest) => {
       setScrolled(latest > 20);
     });
   }, [scrollY]);
+
+  useEffect(() => {
+    if (!firestore || user?.role !== 'candidate') return;
+    
+    const q = query(collection(firestore, 'assessments'), where('status', '==', 'active'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const templates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentTemplate));
+      setAssessmentTemplates(templates);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, user]);
+
+  const handleStartAssessment = (template: AssessmentTemplate) => {
+     if(!template.questionIds || template.questionIds.length === 0){
+        // This should ideally be handled by a proper AI-generation flow if questions are missing
+        console.error("Template has no questions");
+        return;
+    }
+
+    // This is a simplified version. A real app would fetch the full question objects
+    // For now, we mock the questions based on what the template provides.
+    const questions = template.questionIds.map((id, i) => ({
+        id: id,
+        questionText: `Question ${i + 1} for ${template.name}`,
+        type: 'mcq' as const,
+        difficulty: 'Medium' as const,
+        skill: template.skills[0] || 'general',
+        timeLimit: 120,
+        tags: [template.role]
+    }));
+
+    assessmentStore.setAssessment({
+        id: template.id,
+        roleId: template.role,
+        roleName: template.name,
+        questions: questions,
+        totalTimeLimit: template.duration * 60,
+        isTemplate: true,
+        templateId: template.id,
+    });
+    router.push(`/assessment/${template.id}`);
+  }
 
   return (
     <motion.header
@@ -80,15 +137,39 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                {/* Role-specific Menu Items */}
                 {user.role === 'candidate' ? (
                   <>
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Skill Assessment</Link>
-                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <NotebookPen className="mr-2 h-4 w-4" />
+                        <span>Assessments</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem asChild>
+                            <Link href="/skill-assessment">
+                                <BookCopy className="mr-2 h-4 w-4" />Practice by Role
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Official Assessments</DropdownMenuLabel>
+                          {assessmentTemplates.length > 0 ? (
+                            assessmentTemplates.map(template => (
+                              <DropdownMenuItem key={template.id} onSelect={() => handleStartAssessment(template)}>
+                                {template.name}
+                              </DropdownMenuItem>
+                            ))
+                          ) : (
+                             <DropdownMenuItem disabled>No official assessments</DropdownMenuItem>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
                     <DropdownMenuItem asChild>
                       <Link href="/profile/me"><User className="mr-2 h-4 w-4" />Profile</Link>
                     </DropdownMenuItem>

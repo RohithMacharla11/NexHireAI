@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, limit, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, orderBy, collectionGroup, getCountFromServer, doc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { User as UserType, Role, AssessmentAttempt } from '@/lib/types';
 import { format, subMonths, startOfDay, endOfDay } from 'date-fns';
@@ -59,7 +60,14 @@ export default function AdminHomePage() {
             ]);
 
             // --- Process Assessments ---
-            const allAssessments = assessmentsSnapshot.docs.map(doc => doc.data() as AssessmentAttempt & { id: string, userId: string });
+            const allAssessments = assessmentsSnapshot.docs.map(doc => {
+              const data = doc.data();
+              // This is a workaround to get the userId from the path
+              const path = doc.ref.path;
+              const userId = path.split('/')[1];
+              return { id: doc.id, userId, ...data } as AssessmentAttempt;
+            });
+            
             const totalAssessments = allAssessments.length;
             const totalScore = allAssessments.reduce((acc, att) => acc + (att.finalScore || 0), 0);
             const avgSuccess = totalAssessments > 0 ? Math.round(totalScore / totalAssessments) : 0;
@@ -94,7 +102,6 @@ export default function AdminHomePage() {
             
             const userNames: Map<string, string> = new Map();
             if (userIds.length > 0) {
-              // Batch fetch user documents
               const userDocs = await Promise.all(userIds.map(id => getDoc(doc(firestore, 'users', id))));
               userDocs.forEach(docSnap => {
                 if(docSnap.exists()){

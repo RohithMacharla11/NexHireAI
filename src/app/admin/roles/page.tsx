@@ -1,7 +1,7 @@
 
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, onSnapshot } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,21 +26,19 @@ export default function RolesPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const fetchRoles = async () => {
-            if (!firestore) return;
-            setIsLoading(true);
-            try {
-                const q = query(collection(firestore, 'roles'));
-                const querySnapshot = await getDocs(q);
-                const rolesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Role));
-                setRoles(rolesData);
-            } catch (error) {
-                console.error("Error fetching roles:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchRoles();
+        if (!firestore) return;
+        setIsLoading(true);
+        const q = query(collection(firestore, 'roles'));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const rolesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Role));
+            setRoles(rolesData);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching roles:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [firestore]);
 
     return (

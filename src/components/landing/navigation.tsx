@@ -1,6 +1,19 @@
 
+'use client';
+
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu"
+import { cn } from '@/lib/utils';
+import React from 'react';
 
 export function Navigation() {
   const { user } = useAuth();
@@ -13,14 +26,11 @@ export function Navigation() {
       <Link href="/#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
         Features
       </Link>
-      <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-        How It Works
-      </Link>
       
       {user ? (
         <>
           <Link href="/skill-assessment" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-            Skill Assessment
+            Assessments
           </Link>
           <Link href="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             Dashboard
@@ -28,6 +38,9 @@ export function Navigation() {
         </>
       ) : (
         <>
+          <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            How It Works
+          </Link>
           <Link href="/#about" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             About
           </Link>

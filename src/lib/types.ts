@@ -20,6 +20,7 @@ export interface Question {
     skill: string; 
     tags: string[];
     starterCode?: string;
+    timeLimit: number; // Added this from the generate flow
     // New fields from your schema
     aiQualityScore?: number;
     lastReviewedBy?: string;
@@ -48,13 +49,16 @@ export interface Assessment {
     roleId: string;
     roleName: string;
     questions: Question[];
-    totalTimeLimit: number;
+    totalTimeLimit: number; // in seconds
+    isTemplate: boolean;
+    templateId?: string;
 }
 
 export interface AssessmentTemplate {
     id: string;
     name: string;
     role: string;
+    roleId: string;
     skills: string[];
     questionCount: number;
     duration: number; // in minutes
@@ -69,7 +73,7 @@ export interface AssessmentTemplate {
 export interface AssessmentAttempt {
     id: string;
     userId: string;
-    assessmentId: string;
+    assessmentId: string; // The ID of the AssessmentTemplate
     roleId: string;
     startedAt: number; // timestamp
     submittedAt?: number; // timestamp

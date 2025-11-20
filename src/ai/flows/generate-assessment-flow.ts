@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview A flow to dynamically generate a 30-question assessment for a given role.
+ * @fileOverview A flow to dynamically generate a 30-question practice assessment for a given role.
  * If questions for the role don't exist, it generates and saves them first.
  */
 import { ai } from '@/ai/genkit';
@@ -25,7 +25,7 @@ const GeneratedQuestionSchema = z.object({
   starterCode: z.string().optional(),
 });
 
-// Zod schema for the entire batch of questions. We no longer enforce a strict length of 30.
+// Zod schema for the entire batch of questions.
 const QuestionsSchema = z.array(GeneratedQuestionSchema);
 
 
@@ -55,17 +55,15 @@ const generateAssessmentFlow = ai.defineFlow(
     let allQuestions: Question[] = [];
 
     if (existingQuestionsSnap.size >= 30) {
-      // Questions exist, fetch them
       console.log(`Found existing questions for role: ${roleName}`);
       existingQuestionsSnap.forEach((doc) => {
         allQuestions.push({ id: doc.id, ...doc.data() } as Question);
       });
     } else {
-      // Questions do NOT exist, generate and save them in a single, efficient call
       console.log(`No questions found for role: ${roleName}. Generating 30 new questions...`);
       
       const { output: generatedQuestions } = await ai.generate({
-          prompt: `You are an expert technical interviewer creating an assessment for the "${roleName}" role.
+          prompt: `You are an expert technical interviewer creating a practice assessment for the "${roleName}" role.
           The core sub-skills for this role are: ${subSkills.join(', ')}.
           
           Your task is to generate exactly 30 high-quality assessment questions covering these skills.
@@ -84,7 +82,7 @@ const generateAssessmentFlow = ai.defineFlow(
           - **Mandatory Fields:** Ensure the 'skill' field for each question correctly identifies which sub-skill it targets. All fields in the schema must be present for each question, even if optional (e.g., use 'options: []' for non-mcq).
 
           Adhere strictly to the JSON output schema, which is an array of exactly 30 question objects. Your response MUST be a valid JSON array.`,
-          output: { schema: QuestionsSchema }, // Use the less strict schema
+          output: { schema: QuestionsSchema },
           config: { temperature: 0.6 }
       });
       
@@ -108,7 +106,6 @@ const generateAssessmentFlow = ai.defineFlow(
     }
 
     // 3. Assemble and return the final assessment object
-    // Take up to the first 30 questions, in case the AI provides more or fewer.
     const selectedQuestions = allQuestions.slice(0, 30);
     const totalTimeLimit = selectedQuestions.reduce((acc, q) => acc + (q.timeLimit || 60), 0); // Default to 60s if not set
 
@@ -118,6 +115,7 @@ const generateAssessmentFlow = ai.defineFlow(
         roleName: roleName,
         questions: selectedQuestions,
         totalTimeLimit,
+        isTemplate: false,
     };
     
     return assessment;
