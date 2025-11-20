@@ -43,8 +43,8 @@ export default function AdminHomePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Only run if firestore is initialized
-    if (!firestore) return;
+    // Only run if firestore and user are initialized
+    if (!firestore || !user) return;
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -64,7 +64,7 @@ export default function AdminHomePage() {
             ] = await Promise.all([
                 getDocs(candidatesQuery),
                 getDocs(rolesQuery),
-                getDocs(assessmentTemplatesQuery),
+                getDocs(templatesSnapshot),
                 getDocs(allAttemptsQuery),
             ]);
 
@@ -95,6 +95,9 @@ export default function AdminHomePage() {
 
             // --- 3. Prepare Candidate Growth Chart Data (last 6 months) ---
             const monthlyData: Record<string, { Candidates: number }> = {};
+            const sixMonthsAgo = subMonths(new Date(), 5);
+            sixMonthsAgo.setDate(1);
+
             for (let i = 5; i >= 0; i--) {
                 const month = format(subMonths(new Date(), i), 'MMM');
                 monthlyData[month] = { Candidates: 0 };
@@ -102,10 +105,12 @@ export default function AdminHomePage() {
             candidatesData.forEach(c => {
                 if (c.createdAt && typeof c.createdAt.seconds === 'number') {
                      const joinDate = new Date(c.createdAt.seconds * 1000);
-                     const month = format(joinDate, 'MMM');
-                     if (monthlyData[month]) {
-                        monthlyData[month].Candidates++;
-                    }
+                     if (joinDate >= sixMonthsAgo) {
+                        const month = format(joinDate, 'MMM');
+                        if (monthlyData[month]) {
+                           monthlyData[month].Candidates++;
+                       }
+                     }
                 }
             });
             setChartData(Object.entries(monthlyData).map(([name, values]) => ({ name, ...values })));
@@ -149,7 +154,7 @@ export default function AdminHomePage() {
     };
 
     fetchData();
-  }, [firestore]); // Dependency on firestore ensures it runs once initialized.
+  }, [firestore, user]); 
   
   if (isLoading) {
     return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
