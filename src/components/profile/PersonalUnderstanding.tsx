@@ -49,7 +49,7 @@ export const PersonalUnderstanding = ({ analysis, onFlip }: PersonalUnderstandin
     };
 
     return (
-        <Card className="w-full rounded-3xl border border-white/10 bg-card/60 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/20">
+        <Card className="w-full h-full rounded-3xl border border-white/10 bg-card/60 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40 overflow-y-auto">
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
                 <motion.div variants={itemVariants}>
                     <CardHeader className="p-0 flex-row items-center justify-between">
