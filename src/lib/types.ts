@@ -189,10 +189,11 @@ export interface Cohort {
     createdBy: string;
     createdAt: number;
     candidateIds: string[];
-    candidates?: (User & { status?: CandidateStatus })[]; // Populated on the client, added status
+    candidates?: User[]; // Populated on the client
     assignedAssessmentId?: string;
     assignedAssessmentName?: string; // For display
     assessmentAssignedAt?: number;
+    statuses?: { [candidateId: string]: CandidateStatus }; // To store status per candidate
 }
 
 export interface Notification {

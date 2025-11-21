@@ -3,12 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, query, onSnapshot, getDoc, doc, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, getDoc, doc, where, getDocs, writeBatch, updateDoc, collectionGroup } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { Cohort, User, AssessmentAttempt, CandidateStatus } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Trophy, Crown, Medal, Gem, Users } from 'lucide-react';
+import { Loader2, ArrowLeft, Crown, Medal, Gem, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
 
 type LeaderboardEntry = {
     user: User;
@@ -45,9 +44,15 @@ export default function LeaderboardPage() {
                 router.push('/admin/pipeline');
                 return;
             }
-
+            setIsLoading(true);
             const cohortData = { id: docSnap.id, ...docSnap.data() } as Cohort;
             setCohort(cohortData);
+
+            if (!cohortData.candidateIds || cohortData.candidateIds.length === 0) {
+                 setLeaderboard([]);
+                 setIsLoading(false);
+                 return;
+            }
 
             // Fetch all users in the cohort
             const usersRef = collection(firestore, 'users');
@@ -55,29 +60,27 @@ export default function LeaderboardPage() {
             const usersSnap = await getDocs(usersQuery);
             const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User));
 
-            // If an assessment is assigned, fetch all attempts for it
             let attempts: AssessmentAttempt[] = [];
             if (cohortData.assignedAssessmentId) {
-                const attemptsColGroup = collection(firestore, `users`);
+                // Query the collection group for all assessments attempts that match the assigned ID
+                const attemptsColGroup = collectionGroup(firestore, 'assessments');
                 const attemptsQuery = query(
-                    collection(firestore, `users/${users[0].id}/assessments`),
-                    where('assessmentId', '==', cohortData.assignedAssessmentId)
+                    attemptsColGroup, 
+                    where('assessmentId', '==', cohortData.assignedAssessmentId),
+                    where('userId', 'in', cohortData.candidateIds)
                 );
-                
-                // This is a simplification. A real app might need to query each user's subcollection.
-                // For now, we assume we can get all attempts in a manageable way.
-                const attemptsSnap = await getDocs(query(collection(firestore, 'users', users[0].id, 'assessments'), where('assessmentId', '==', cohortData.assignedAssessmentId)));
+                const attemptsSnap = await getDocs(attemptsQuery);
                 attempts = attemptsSnap.docs.map(d => d.data() as AssessmentAttempt);
             }
             
             const entries = users.map(user => {
                 const userAttempt = attempts.find(a => a.userId === user.id);
-                // Here you would also get the candidate's status for this cohort, likely from the cohort doc itself
-                const status: CandidateStatus = 'Shortlisted'; 
+                // In a real app, status might be stored in the cohort doc, e.g., cohortData.statuses[user.id]
+                const status: CandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || 'Shortlisted'; 
                 return { user, attempt: userAttempt, status };
             });
 
-            // Sort by score if available
+            // Sort by score if available, otherwise keep original order
             entries.sort((a, b) => (b.attempt?.finalScore ?? -1) - (a.attempt?.finalScore ?? -1));
 
             setLeaderboard(entries);
@@ -92,22 +95,23 @@ export default function LeaderboardPage() {
 
         toast({ title: `Updating status to ${newStatus}...` });
 
-        // In a real app, the status should be stored per-candidate *within the cohort document*
-        // For this example, we'll simulate by adding a notification to the user
-        const notificationRef = doc(collection(firestore, `users/${userId}/notifications`));
-        const batch = writeBatch(firestore);
-
-        batch.set(notificationRef, {
-            title: `Update on ${cohort.name}`,
-            message: `Your application status has been updated to: ${newStatus}.`,
-            isRead: false,
-            createdAt: Date.now(),
-        });
+        const cohortRef = doc(firestore, 'cohorts', cohort.id);
         
         try {
-            await batch.commit();
+            await updateDoc(cohortRef, {
+                [`statuses.${userId}`]: newStatus
+            });
+
+            const notificationRef = doc(collection(firestore, `users/${userId}/notifications`));
+            await setDoc(notificationRef, {
+                title: `Update on ${cohort.name}`,
+                message: `Your application status has been updated to: ${newStatus}.`,
+                isRead: false,
+                createdAt: Date.now(),
+                ...(newStatus === 'Hired' && { link: '/dashboard/gamification' }),
+            });
+            
             toast({ title: "Status Updated", description: `Candidate has been notified.` });
-            // Here you would refetch or update local state to reflect the change
         } catch (error) {
             toast({ title: "Update Failed", description: (error as Error).message, variant: 'destructive' });
         }
@@ -167,7 +171,7 @@ export default function LeaderboardPage() {
                                 <TableRow key={entry.user.id}>
                                     <TableCell className="text-center">
                                         <div className="flex items-center justify-center h-full">
-                                            {getRankIcon(index)}
+                                            {entry.attempt ? getRankIcon(index) : '-'}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -183,7 +187,7 @@ export default function LeaderboardPage() {
                                         </div>
                                     </TableCell>
                                      <TableCell className="text-center font-bold text-lg">
-                                        {entry.attempt ? `${Math.round(entry.attempt.finalScore!)}%` : 'N/A'}
+                                        {entry.attempt ? `${Math.round(entry.attempt.finalScore!)}%` : <span className="text-muted-foreground italic text-sm">Pending</span>}
                                     </TableCell>
                                     <TableCell>
                                          {entry.attempt ? (
@@ -205,7 +209,7 @@ export default function LeaderboardPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent>
                                                 {(['Shortlisted', 'Under Review', 'Hired', 'Rejected'] as CandidateStatus[]).map(status => (
-                                                    <DropdownMenuItem key={status} onSelect={() => handleStatusChange(entry.user.id, status)}>
+                                                    <DropdownMenuItem key={status} onSelect={() => handleStatusChange(entry.user.id, status)} disabled={entry.status === status}>
                                                         {status}
                                                     </DropdownMenuItem>
                                                 ))}

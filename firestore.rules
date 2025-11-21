@@ -51,6 +51,13 @@ service cloud.firestore {
     }
     
     /**
+     * @description Secure user notifications. Only the user can read/write their own.
+     */
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    /**
      * @description Rule to allow admins to query the 'assessments' collection group.
      * This is required for the admin dashboard to fetch recent activity across all users.
      */
@@ -88,6 +95,13 @@ service cloud.firestore {
      * @description Assessment templates, only manageable by admins/recruiters.
      */
     match /assessments/{assessmentId} {
+        allow read, write: if isRecruiterOrAdmin();
+    }
+
+    /**
+     * @description Cohorts can be managed by recruiters/admins.
+     */
+    match /cohorts/{cohortId} {
         allow read, write: if isRecruiterOrAdmin();
     }
 
