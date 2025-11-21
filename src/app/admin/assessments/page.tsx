@@ -1,16 +1,16 @@
 
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, onSnapshot, deleteDoc, doc, writeBatch, where } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, NotebookPen, CheckCircle, BarChart, Clock, Loader2, FileJson, BrainCircuit, Trash2, Pencil, Copy, PowerOff } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, NotebookPen, CheckCircle, BarChart, Clock, Loader2, FileJson, BrainCircuit, Trash2, Pencil, Copy, PowerOff, Upload, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { AssessmentTemplate } from '@/lib/types';
+import type { AssessmentTemplate, Question } from '@/lib/types';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import {
@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 const containerVariants = {
     hidden: { opacity: 1 },
@@ -85,6 +86,97 @@ export default function AssessmentsPage() {
             setSelectedForDelete(null);
         }
     };
+    
+    const handleExport = async (assessment: AssessmentTemplate) => {
+        if (!firestore) return;
+        
+        try {
+            let questions: Question[] = [];
+            if (assessment.questionIds && assessment.questionIds.length > 0) {
+                const qQuery = query(collection(firestore, 'questionBank'), where('__name__', 'in', assessment.questionIds));
+                const questionsSnap = await getDocs(qQuery);
+                questions = questionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Question));
+            }
+            
+            const exportData = { ...assessment, questions };
+            const jsonString = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${assessment.name.replace(/\s+/g, '_')}_export.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            toast({ title: "Export Successful", description: `"${assessment.name}" has been exported.` });
+
+        } catch (error) {
+            console.error("Error exporting assessment:", error);
+            toast({ title: "Export Failed", variant: "destructive" });
+        }
+    };
+    
+    const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const text = e.target?.result;
+                if (typeof text !== 'string') {
+                    throw new Error("File could not be read.");
+                }
+                const importedData = JSON.parse(text) as AssessmentTemplate & { questions?: Question[] };
+                
+                // Validate the imported data structure
+                if (!importedData.name || !importedData.role || !importedData.questions) {
+                    throw new Error("Invalid JSON structure for assessment template.");
+                }
+
+                const { questions, ...templateData } = importedData;
+                
+                // Generate new IDs for the template and questions to avoid collisions
+                const newTemplateId = uuidv4();
+                const newQuestions = questions.map(q => ({ ...q, id: uuidv4() }));
+                const newQuestionIds = newQuestions.map(q => q.id);
+
+                const batch = writeBatch(firestore);
+
+                const finalTemplate = {
+                    ...templateData,
+                    id: newTemplateId,
+                    name: `${templateData.name} (Imported)`, // Append to name to indicate it's an import
+                    questionIds: newQuestionIds,
+                    questionCount: newQuestions.length,
+                    createdAt: Date.now(),
+                };
+                delete (finalTemplate as any).questions;
+
+                const templateRef = doc(firestore, 'assessments', newTemplateId);
+                batch.set(templateRef, finalTemplate);
+                
+                for (const question of newQuestions) {
+                    const questionRef = doc(firestore, 'questionBank', question.id);
+                    batch.set(questionRef, question);
+                }
+
+                await batch.commit();
+
+                toast({ title: "Import Successful!", description: `"${finalTemplate.name}" has been added.` });
+
+            } catch (error) {
+                console.error("Error importing assessment:", error);
+                toast({ title: "Import Failed", description: (error as Error).message, variant: "destructive" });
+            } finally {
+                // Reset file input to allow re-uploading the same file
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    };
 
     const openDeleteDialog = (assessment: AssessmentTemplate) => {
         setSelectedForDelete(assessment);
@@ -97,7 +189,12 @@ export default function AssessmentsPage() {
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-4xl font-bold">Assessment Management</h1>
                     <div className="flex gap-2">
-                         <Button variant="outline"><FileJson className="mr-2 h-4 w-4" /> Import from JSON</Button>
+                         <Button asChild variant="outline">
+                            <label htmlFor="import-json" className="cursor-pointer">
+                                <Upload className="mr-2 h-4 w-4" /> Import from JSON
+                                <input type="file" id="import-json" accept=".json" className="hidden" onChange={handleImport} />
+                            </label>
+                         </Button>
                          <Button onClick={() => router.push('/admin/assessments/new')}><PlusCircle className="mr-2 h-4 w-4" /> Create New Assessment</Button>
                     </div>
                 </div>
@@ -173,6 +270,9 @@ export default function AssessmentsPage() {
                                                     <DropdownMenuContent>
                                                         <DropdownMenuItem onSelect={() => router.push(`/admin/assessments/${assessment.id}/edit`)}>
                                                             <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handleExport(assessment)}>
+                                                            <Download className="mr-2 h-4 w-4" /> Export as JSON
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => toast({title: "Coming Soon!", description: "Cloning will be enabled in a future update."})}>
                                                             <Copy className="mr-2 h-4 w-4" /> Clone
