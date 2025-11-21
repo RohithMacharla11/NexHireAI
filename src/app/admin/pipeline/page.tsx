@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import ReactSelect from 'react-select';
 import makeAnimated from 'react-select/animated';
 import { skillsOptions, experienceLevels } from '@/components/profile/profile-options';
+import { Label } from '@/components/ui/label';
 
 const animatedComponents = makeAnimated();
 type PipelineView = 'main' | 'ai_results' | 'manual_select';
