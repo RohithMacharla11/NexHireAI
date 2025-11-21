@@ -27,7 +27,7 @@ import { matchCandidates, MatchCandidatesOutput } from '@/ai/flows/match-candida
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import Select as ReactSelect from 'react-select';
+import ReactSelect from 'react-select';
 import makeAnimated from 'react-select/animated';
 import { skillsOptions, experienceLevels } from '@/components/profile/profile-options';
 
