@@ -25,22 +25,32 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
   const { register, handleSubmit, control, formState: { isSubmitting, errors } } = useForm<User>({
     defaultValues: {
       ...profileData,
+      name: profileData.name || '',
+      linkedinUrl: profileData.linkedinUrl || '',
+      githubUrl: profileData.githubUrl || '',
+      portfolioUrl: profileData.portfolioUrl || '',
       candidateSpecific: {
           ...profileData.candidateSpecific,
+          collegeOrUniversity: profileData.candidateSpecific?.collegeOrUniversity || '',
+          currentCompanyOrInternship: profileData.candidateSpecific?.currentCompanyOrInternship || '',
+          experienceLevel: profileData.candidateSpecific?.experienceLevel,
+          yearsOfExperience: profileData.candidateSpecific?.yearsOfExperience || 0,
           skills: profileData.candidateSpecific?.skills || [],
+          bio: profileData.candidateSpecific?.bio || '',
           locationPreferences: profileData.candidateSpecific?.locationPreferences || [],
           experiences: profileData.candidateSpecific?.experiences || [],
           projects: profileData.candidateSpecific?.projects || [],
           achievements: profileData.candidateSpecific?.achievements || [],
       },
       recruiterSpecific: {
-          companyName: profileData.recruiterSpecific?.companyName || 'Your Company Inc.',
-          designation: profileData.recruiterSpecific?.designation || 'Hiring Manager',
-          mobileNumber: profileData.recruiterSpecific?.mobileNumber || '9876543210',
-          companyWebsite: profileData.recruiterSpecific?.companyWebsite || 'https://yourcompany.com',
-          yearsOfExperience: profileData.recruiterSpecific?.yearsOfExperience || 5,
-          hiringFocus: profileData.recruiterSpecific?.hiringFocus || ['react', 'nodejs', 'gcp'],
-          notes: profileData.recruiterSpecific?.notes || 'Specializing in finding top-tier engineering talent.',
+          ...profileData.recruiterSpecific,
+          companyName: profileData.recruiterSpecific?.companyName || '',
+          designation: profileData.recruiterSpecific?.designation || '',
+          mobileNumber: profileData.recruiterSpecific?.mobileNumber || '',
+          companyWebsite: profileData.recruiterSpecific?.companyWebsite || '',
+          yearsOfExperience: profileData.recruiterSpecific?.yearsOfExperience || 0,
+          hiringFocus: profileData.recruiterSpecific?.hiringFocus || [],
+          notes: profileData.recruiterSpecific?.notes || '',
       }
     },
   });
@@ -88,7 +98,7 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label htmlFor="name">Full Name</Label>
-          <Input id="name" {...register('name')} />
+          <Input id="name" {...register('name')} placeholder="Your full name" />
         </div>
         <div className="space-y-1">
           <Label htmlFor="email">Email</Label>
@@ -101,11 +111,11 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-1">
                 <Label htmlFor="candidateSpecific.collegeOrUniversity">College/University</Label>
-                <Input id="candidateSpecific.collegeOrUniversity" {...register('candidateSpecific.collegeOrUniversity')} />
+                <Input id="candidateSpecific.collegeOrUniversity" {...register('candidateSpecific.collegeOrUniversity')} placeholder="e.g., MIT" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="candidateSpecific.currentCompanyOrInternship">Current Company</Label>
-                <Input id="candidateSpecific.currentCompanyOrInternship" {...register('candidateSpecific.currentCompanyOrInternship')} />
+                <Input id="candidateSpecific.currentCompanyOrInternship" {...register('candidateSpecific.currentCompanyOrInternship')} placeholder="e.g., Google" />
               </div>
           </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -121,13 +131,14 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
                                 styles={selectStyles}
                                 value={experienceLevels.find(c => c.value === field.value)}
                                 onChange={(val: any) => field.onChange(val.value)}
+                                placeholder="Select experience level..."
                             />
                         )}
                     />
                 </div>
                 <div className="space-y-1">
                     <Label htmlFor="candidateSpecific.yearsOfExperience">Years of Experience</Label>
-                    <Input id="candidateSpecific.yearsOfExperience" type="number" {...register('candidateSpecific.yearsOfExperience', { valueAsNumber: true })} />
+                    <Input id="candidateSpecific.yearsOfExperience" type="number" {...register('candidateSpecific.yearsOfExperience', { valueAsNumber: true })} placeholder="e.g., 5" />
                 </div>
             </div>
            <div className="space-y-1">
@@ -144,13 +155,14 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
                           styles={selectStyles}
                           value={skillsOptions.filter(c => field.value?.includes(c.value))}
                           onChange={(val: any) => field.onChange(val.map((c: any) => c.value))}
+                          placeholder="Select your skills..."
                       />
                   )}
               />
           </div>
           <div className="space-y-1">
               <Label htmlFor="candidateSpecific.bio">Bio</Label>
-              <Textarea id="candidateSpecific.bio" {...register('candidateSpecific.bio')} />
+              <Textarea id="candidateSpecific.bio" {...register('candidateSpecific.bio')} placeholder="Tell us a little about yourself..." />
           </div>
 
           <Separator className="my-6" />
@@ -225,6 +237,7 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
                           styles={selectStyles}
                            value={locationOptions.filter(c => field.value?.includes(c.value))}
                            onChange={(val: any) => field.onChange(val.map((c: any) => c.value))}
+                           placeholder="Select locations..."
                       />
                   )}
               />
@@ -235,11 +248,11 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
       {profileData.role === 'recruiter' && (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1"><Label htmlFor="recruiterSpecific.companyName">Company Name</Label><Input id="recruiterSpecific.companyName" {...register('recruiterSpecific.companyName')} /></div>
-                <div className="space-y-1"><Label htmlFor="recruiterSpecific.designation">Designation</Label><Input id="recruiterSpecific.designation" {...register('recruiterSpecific.designation')} /></div>
-                <div className="space-y-1"><Label htmlFor="recruiterSpecific.mobileNumber">Mobile Number</Label><Input id="recruiterSpecific.mobileNumber" {...register('recruiterSpecific.mobileNumber')} /></div>
-                <div className="space-y-1"><Label htmlFor="recruiterSpecific.companyWebsite">Company Website</Label><Input id="recruiterSpecific.companyWebsite" {...register('recruiterSpecific.companyWebsite')} /></div>
-                <div className="space-y-1"><Label htmlFor="recruiterSpecific.yearsOfExperience">Years of Experience</Label><Input id="recruiterSpecific.yearsOfExperience" type="number" {...register('recruiterSpecific.yearsOfExperience', { valueAsNumber: true })} /></div>
+                <div className="space-y-1"><Label htmlFor="recruiterSpecific.companyName">Company Name</Label><Input id="recruiterSpecific.companyName" {...register('recruiterSpecific.companyName')} placeholder="Your Company Inc." /></div>
+                <div className="space-y-1"><Label htmlFor="recruiterSpecific.designation">Designation</Label><Input id="recruiterSpecific.designation" {...register('recruiterSpecific.designation')} placeholder="Hiring Manager" /></div>
+                <div className="space-y-1"><Label htmlFor="recruiterSpecific.mobileNumber">Mobile Number</Label><Input id="recruiterSpecific.mobileNumber" {...register('recruiterSpecific.mobileNumber')} placeholder="9876543210" /></div>
+                <div className="space-y-1"><Label htmlFor="recruiterSpecific.companyWebsite">Company Website</Label><Input id="recruiterSpecific.companyWebsite" {...register('recruiterSpecific.companyWebsite')} placeholder="https://yourcompany.com" /></div>
+                <div className="space-y-1"><Label htmlFor="recruiterSpecific.yearsOfExperience">Years of Experience</Label><Input id="recruiterSpecific.yearsOfExperience" type="number" {...register('recruiterSpecific.yearsOfExperience', { valueAsNumber: true })} placeholder="e.g., 5" /></div>
             </div>
             <div className="space-y-1">
                 <Label htmlFor="recruiterSpecific.hiringFocus">Hiring Focus</Label>
@@ -255,21 +268,22 @@ export const EditProfileForm = ({ profileData, onSave, onCancel, isOwnProfile }:
                             styles={selectStyles}
                             value={skillsOptions.filter(c => field.value?.includes(c.value))}
                             onChange={(val: any) => field.onChange(val.map((c: any) => c.value))}
+                            placeholder="Select skills..."
                         />
                     )}
                 />
             </div>
              <div className="space-y-1">
                 <Label htmlFor="recruiterSpecific.notes">Notes</Label>
-                <Textarea id="recruiterSpecific.notes" {...register('recruiterSpecific.notes')} />
+                <Textarea id="recruiterSpecific.notes" {...register('recruiterSpecific.notes')} placeholder="e.g., Specializing in finding top-tier engineering talent." />
             </div>
         </>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="space-y-1"><Label htmlFor="linkedinUrl">LinkedIn URL</Label><Input id="linkedinUrl" {...register('linkedinUrl')} /></div>
-        <div className="space-y-1"><Label htmlFor="githubUrl">GitHub URL</Label><Input id="githubUrl" {...register('githubUrl')} /></div>
-        <div className="space-y-1"><Label htmlFor="portfolioUrl">Portfolio URL</Label><Input id="portfolioUrl" {...register('portfolioUrl')} /></div>
+        <div className="space-y-1"><Label htmlFor="linkedinUrl">LinkedIn URL</Label><Input id="linkedinUrl" {...register('linkedinUrl')} placeholder="https://linkedin.com/in/..." /></div>
+        <div className="space-y-1"><Label htmlFor="githubUrl">GitHub URL</Label><Input id="githubUrl" {...register('githubUrl')} placeholder="https://github.com/..." /></div>
+        <div className="space-y-1"><Label htmlFor="portfolioUrl">Portfolio URL</Label><Input id="portfolioUrl" {...register('portfolioUrl')} placeholder="https://your-portfolio.com" /></div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
