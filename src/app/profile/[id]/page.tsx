@@ -193,7 +193,7 @@ export default function ProfilePage() {
   const hasAnalysis = !!profileData.analysis?.summary;
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center p-4">
+    <div className="w-full h-full p-4 md:p-8">
         <motion.div
             className="w-full h-full preserve-3d"
             initial={false}
