@@ -1,7 +1,7 @@
 
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
@@ -18,15 +18,12 @@ import { CodeEditor } from '@/components/assessment/CodeEditor';
 
 
 export default function AssessmentResultPage() {
-    const { user, isLoading: authLoading, profileData } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const params = useParams();
-    const searchParams = useSearchParams();
     const { firestore } = initializeFirebase();
     const [attempt, setAttempt] = useState<(AssessmentAttempt & { roleName?: string, questionsWithAnswers?: (Question & UserResponse)[] }) | null>(null);
     const [isFetching, setIsFetching] = useState(true);
-
-    const userIdFromQuery = searchParams.get('userId');
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -39,11 +36,12 @@ export default function AssessmentResultPage() {
 
         const fetchAttempt = async () => {
             setIsFetching(true);
-            const pathUserId = (profileData?.role !== 'candidate' && userIdFromQuery) ? userIdFromQuery : user.id;
-
+            
             try {
                 const attemptId = params.id as string;
-                const attemptDocRef = doc(firestore, 'users', pathUserId, 'assessments', attemptId);
+                // Simplified: Always use the logged-in user's ID for this page.
+                // The admin view for other users' profiles is handled separately.
+                const attemptDocRef = doc(firestore, 'users', user.id, 'assessments', attemptId);
                 const attemptDoc = await getDoc(attemptDocRef);
 
                 if (!attemptDoc.exists()) {
@@ -61,9 +59,13 @@ export default function AssessmentResultPage() {
                 const questionIds = attemptData.responses.map(res => res.questionId);
                 let questionsFromDb: Question[] = [];
                 if (questionIds.length > 0) {
-                    const qQuery = query(collection(firestore, 'questionBank'), where('__name__', 'in', questionIds));
-                    const questionsSnapshot = await getDocs(qQuery);
-                    questionsFromDb = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
+                    // Firestore 'in' query is limited to 30 items, so we handle it in chunks if necessary.
+                    for (let i = 0; i < questionIds.length; i += 30) {
+                        const chunk = questionIds.slice(i, i + 30);
+                        const qQuery = query(collection(firestore, 'questionBank'), where('__name__', 'in', chunk));
+                        const questionsSnapshot = await getDocs(qQuery);
+                        questionsFromDb.push(...questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question)));
+                    }
                 }
                 
                 const questionsWithAnswers = attemptData.responses.map(res => {
@@ -81,7 +83,7 @@ export default function AssessmentResultPage() {
         };
 
         fetchAttempt();
-    }, [user, firestore, params.id, userIdFromQuery, profileData]);
+    }, [user, firestore, params.id]);
 
     const containerVariants = {
         hidden: { opacity: 1 },
@@ -242,3 +244,4 @@ const InfoCard = ({ title, value }: { title: string, value: string }) => (
     
 
     
+
