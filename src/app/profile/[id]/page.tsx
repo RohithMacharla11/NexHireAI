@@ -194,7 +194,7 @@ export default function ProfilePage() {
 
   return (
     <div className="relative min-h-full w-full flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl h-full perspective">
+      <div className="w-full h-full perspective">
             <motion.div
                 className="w-full h-full preserve-3d"
                 initial={false}
