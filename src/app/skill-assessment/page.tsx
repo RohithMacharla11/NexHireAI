@@ -10,8 +10,8 @@ import { initializeFirebase } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Loader2, BookCopy, Sparkles, AlertTriangle } from 'lucide-react';
-import type { Role, AssessmentTemplate, Question, Cohort } from '@/lib/types';
+import { Loader2, BookCopy, Sparkles, AlertTriangle, CheckCircle } from 'lucide-react';
+import type { Role, AssessmentTemplate, Question, Cohort, AssessmentAttempt } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { populateRoles } from '@/ai/flows/populate-roles-flow';
 import { generateAssessment } from '@/ai/flows/generate-assessment-flow';
@@ -28,6 +28,7 @@ export default function SkillAssessmentPage() {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [assignedTemplates, setAssignedTemplates] = useState<AssessmentTemplate[]>([]);
+  const [attemptedTemplateIds, setAttemptedTemplateIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isPopulating, setIsPopulating] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -68,14 +69,14 @@ export default function SkillAssessmentPage() {
         const rolesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Role[];
         setRoles(rolesData);
       }
-      setIsLoading(false);
+      if(!isPopulating) setIsLoading(false);
     }, (error) => {
         console.error("Error fetching roles:", error)
         setIsLoading(false);
     });
 
-    // Fetch assigned assessments
-    const fetchAssignedAssessments = async () => {
+    // Fetch assigned assessments and past attempts
+    const fetchAssignmentsAndHistory = async () => {
         // 1. Find all cohorts the user is in
         const cohortsRef = collection(firestore, 'cohorts');
         const userCohortsQuery = query(cohortsRef, where('candidateIds', 'array-contains', user.id));
@@ -95,16 +96,24 @@ export default function SkillAssessmentPage() {
         } else {
             setAssignedTemplates([]);
         }
+        
+        // 4. Fetch user's assessment history to check for completed official assessments
+        const attemptsQuery = query(collection(firestore, `users/${user.id}/assessments`));
+        const attemptsSnap = await getDocs(attemptsQuery);
+        const attemptedIds = new Set(attemptsSnap.docs.map(doc => (doc.data() as AssessmentAttempt).assessmentId));
+        setAttemptedTemplateIds(attemptedIds);
     };
     
-    fetchAssignedAssessments();
+    fetchAssignmentsAndHistory().finally(() => {
+        if (!isPopulating) setIsLoading(false);
+    });
 
 
     return () => {
         unsubRoles();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firestore, user]);
+  }, [firestore, user, isPopulating]);
   
   const handleStartPractice = (roleId: string, roleName: string) => {
     startTransition(async () => {
@@ -192,7 +201,9 @@ export default function SkillAssessmentPage() {
                     initial="hidden"
                     animate="show"
                 >
-                    {assignedTemplates.map((template) => (
+                    {assignedTemplates.map((template) => {
+                        const isAttempted = attemptedTemplateIds.has(template.id);
+                        return (
                         <motion.div key={template.id} variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
                             <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg transition-all duration-300 hover:border-primary/60 hover:shadow-primary/10 hover:-translate-y-1 flex flex-col">
                                 <CardHeader>
@@ -203,11 +214,17 @@ export default function SkillAssessmentPage() {
                                     <p className="text-sm text-muted-foreground">{template.questionCount} Questions, {template.duration} Minutes</p>
                                 </CardContent>
                                 <CardFooter>
-                                    <Button className="w-full mt-auto" onClick={() => handleStartOfficial(template)}>Start Official Assessment</Button>
+                                    <Button 
+                                      className="w-full mt-auto" 
+                                      onClick={() => handleStartOfficial(template)}
+                                      disabled={isAttempted}
+                                    >
+                                        {isAttempted ? <><CheckCircle className="mr-2 h-4 w-4" /> Attempted</> : 'Start Official Assessment'}
+                                    </Button>
                                 </CardFooter>
                             </Card>
                         </motion.div>
-                    ))}
+                    )})}
                  </motion.div>
             ) : (
                 <Card className="bg-card/30 border-dashed">
