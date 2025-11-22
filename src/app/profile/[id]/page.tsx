@@ -193,49 +193,48 @@ export default function ProfilePage() {
   const hasAnalysis = !!profileData.analysis?.summary;
 
   return (
-    <div className="relative min-h-full w-full flex items-center justify-center p-4">
-      <div className="w-full h-full perspective">
-            <motion.div
-                className="w-full h-full preserve-3d"
-                initial={false}
-                animate={{ rotateY: rotation }}
-                transition={{ duration: 0.7, ease: 'easeInOut' }}
-            >
-                {/* Profile Face */}
-                <div className="absolute w-full h-full backface-hidden" style={{ display: view === 'profile' ? 'block' : 'none' }}>
-                    <ProfileCard 
-                      profileData={profileData} 
-                      onRunAnalysis={runAnalysis}
-                      onEdit={() => handleViewChange('edit')}
-                      onViewInsights={hasAnalysis ? () => handleViewChange('analysis') : undefined}
-                      onAvatarUpload={(file) => handleProfileUpdate({ avatarUrl: URL.createObjectURL(file)})}
-                      isOwnProfile={isOwnProfile}
-                    />
-                </div>
+    <div className="relative h-full w-full flex items-center justify-center p-4">
+        <motion.div
+            className="w-full h-full preserve-3d"
+            initial={false}
+            animate={{ rotateY: rotation }}
+            transition={{ duration: 0.7, ease: 'easeInOut' }}
+            style={{ perspective: '1000px' }}
+        >
+            {/* Profile Face */}
+            <div className="absolute w-full h-full backface-hidden" style={{ display: view === 'profile' ? 'block' : 'none' }}>
+                <ProfileCard 
+                    profileData={profileData} 
+                    onRunAnalysis={runAnalysis}
+                    onEdit={() => handleViewChange('edit')}
+                    onViewInsights={hasAnalysis ? () => handleViewChange('analysis') : undefined}
+                    onAvatarUpload={(file) => handleProfileUpdate({ avatarUrl: URL.createObjectURL(file)})}
+                    isOwnProfile={isOwnProfile}
+                />
+            </div>
 
-                {/* Edit Face */}
-                <div className="absolute w-full h-full backface-hidden rotate-y-180" style={{ display: view === 'edit' ? 'block' : 'none' }}>
-                     <div className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40 flex flex-col">
-                        <div className="flex-grow max-h-full overflow-y-auto pr-4">
-                            <EditProfileForm 
-                                profileData={profileData} 
-                                onSave={handleProfileUpdate} 
-                                onCancel={() => handleViewChange('profile')} 
-                                isOwnProfile={isOwnProfile}
-                            />
-                        </div>
+            {/* Edit Face */}
+            <div className="absolute w-full h-full backface-hidden rotate-y-180" style={{ display: view === 'edit' ? 'block' : 'none' }}>
+                    <div className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40 flex flex-col">
+                    <div className="flex-grow max-h-full overflow-y-auto pr-4">
+                        <EditProfileForm 
+                            profileData={profileData} 
+                            onSave={handleProfileUpdate} 
+                            onCancel={() => handleViewChange('profile')} 
+                            isOwnProfile={isOwnProfile}
+                        />
                     </div>
                 </div>
+            </div>
 
-                {/* Analysis Face */}
-                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)', display: view === 'analysis' ? 'block' : 'none' }}>
-                    <PersonalUnderstanding 
-                        analysis={profileData.analysis?.summary}
-                        onFlip={() => handleViewChange('profile')}
-                    />
-                </div>
-          </motion.div>
-        </div>
+            {/* Analysis Face */}
+            <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)', display: view === 'analysis' ? 'block' : 'none' }}>
+                <PersonalUnderstanding 
+                    analysis={profileData.analysis?.summary}
+                    onFlip={() => handleViewChange('profile')}
+                />
+            </div>
+        </motion.div>
     </div>
   );
 }
