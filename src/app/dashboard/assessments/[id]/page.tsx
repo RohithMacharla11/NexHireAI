@@ -53,25 +53,30 @@ export default function AssessmentResultPage() {
                 const roleDoc = await getDoc(roleDocRef);
                 const roleName = roleDoc.exists() ? (roleDoc.data() as Role).name : 'Unknown Role';
 
-                // Fetch questions from questionBank
-                const questionIds = attemptData.responses.map(res => res.questionId);
-                let questionsFromDb: Question[] = [];
-                if (questionIds.length > 0) {
-                    for (let i = 0; i < questionIds.length; i += 30) {
-                        const chunk = questionIds.slice(i, i + 30);
-                        const qQuery = query(collection(firestore, 'questionBank'), where('__name__', 'in', chunk));
-                        const questionsSnapshot = await getDocs(qQuery);
-                        questionsFromDb.push(...questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question)));
+                let questionsWithAnswers: (Question & UserResponse)[] = [];
+
+                // **FIX:** Ensure responses exist before trying to map over them
+                if (attemptData.responses && Array.isArray(attemptData.responses)) {
+                    const questionIds = attemptData.responses.map(res => res.questionId);
+                    let questionsFromDb: Question[] = [];
+                    
+                    if (questionIds.length > 0) {
+                        for (let i = 0; i < questionIds.length; i += 30) {
+                            const chunk = questionIds.slice(i, i + 30);
+                            const qQuery = query(collection(firestore, 'questionBank'), where('__name__', 'in', chunk));
+                            const questionsSnapshot = await getDocs(qQuery);
+                            questionsFromDb.push(...questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question)));
+                        }
                     }
+
+                    questionsWithAnswers = attemptData.responses
+                        .map(res => {
+                            const question = questionsFromDb.find(q => q.id === res.questionId);
+                            if (!question) return null; // If a question was deleted, skip it.
+                            return { ...question, ...res };
+                        })
+                        .filter(Boolean) as (Question & UserResponse)[]; // Filter out any nulls
                 }
-                
-                const questionsWithAnswers = attemptData.responses
-                    .map(res => {
-                        const question = questionsFromDb.find(q => q.id === res.questionId);
-                        if (!question) return null; // If a question was deleted, skip it.
-                        return { ...question, ...res };
-                    })
-                    .filter(Boolean) as (Question & UserResponse)[]; // Filter out any nulls
 
                 setAttempt({ ...attemptData, roleName, questionsWithAnswers });
 
