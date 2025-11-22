@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useEffect, useTransition } from 'react';
-import { collection, query, onSnapshot, getDocs, doc, writeBatch, where, addDoc } from 'firebase/firestore';
+import { useState, useEffect, useTransition, useMemo } from 'react';
+import { collection, query, onSnapshot, getDocs, doc, writeBatch, where, addDoc, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { Cohort, User, AssessmentTemplate } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, FolderKanban, Users, NotebookPen, Send, BarChart2, Wand2, UserPlus } from 'lucide-react';
+import { Loader2, FolderKanban, Users, NotebookPen, Send, BarChart2, Wand2, UserPlus, MoreHorizontal, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,8 @@ import makeAnimated from 'react-select/animated';
 import { skillsOptions, experienceLevels } from '@/components/profile/profile-options';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const animatedComponents = makeAnimated();
 type PipelineView = 'main' | 'ai_results' | 'manual_select';
@@ -49,7 +52,8 @@ export default function PipelinePage() {
     
     // UI/Loading states
     const [isLoading, setIsLoading] = useState(true);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isAiMatching, startAiMatching] = useTransition();
     const [view, setView] = useState<PipelineView>('main');
 
@@ -172,9 +176,16 @@ export default function PipelinePage() {
 
     // --- Handlers for Assigning Assessments ---
 
-    const handleOpenDialog = (cohort: Cohort) => {
+    const handleOpenAssignDialog = (cohort: Cohort) => {
         setSelectedCohort(cohort);
-        setIsDialogOpen(true);
+        setIsAssignDialogOpen(true);
+    };
+    
+    const handleOpenEditDialog = (cohort: Cohort) => {
+        setSelectedCohort(cohort);
+        setDraftCohortName(cohort.name);
+        setSelectedCandidates(new Set(cohort.candidateIds));
+        setIsEditDialogOpen(true);
     };
 
     const handleAssignAssessment = async () => {
@@ -207,11 +218,35 @@ export default function PipelinePage() {
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to assign the assessment.', variant: 'destructive' });
         } finally {
-            setIsDialogOpen(false);
+            setIsAssignDialogOpen(false);
             setSelectedCohort(null);
             setSelectedTemplateId('');
         }
     };
+    
+    const handleUpdateCohort = async () => {
+        if (!selectedCohort || !firestore) return;
+         if (draftCohortName.trim() === '') {
+            toast({ title: "Name required", description: "Please give your cohort a name.", variant: "destructive" });
+            return;
+        }
+        
+        const cohortRef = doc(firestore, 'cohorts', selectedCohort.id);
+        try {
+            await updateDoc(cohortRef, {
+                name: draftCohortName,
+                candidateIds: Array.from(selectedCandidates),
+            });
+            toast({ title: "Cohort Updated!", description: `Changes to "${draftCohortName}" have been saved.` });
+        } catch (error) {
+             toast({ title: "Error", description: "Could not update the cohort.", variant: "destructive" });
+        } finally {
+            setIsEditDialogOpen(false);
+            setSelectedCohort(null);
+            setDraftCohortName('');
+            setSelectedCandidates(new Set());
+        }
+    }
 
     // --- Memoized filter for manual selection ---
     const filteredCandidates = allCandidates.filter(candidate => {
@@ -265,7 +300,8 @@ export default function PipelinePage() {
                     handleRunAiMatching={handleRunAiMatching}
                     isAiMatching={isAiMatching}
                     onManualCreate={() => { setDraftCohortName(''); setView('manual_select');}}
-                    handleOpenDialog={handleOpenDialog}
+                    handleOpenAssignDialog={handleOpenAssignDialog}
+                    handleOpenEditDialog={handleOpenEditDialog}
                     router={router}
                 />;
         }
@@ -285,8 +321,8 @@ export default function PipelinePage() {
                 </motion.div>
              </AnimatePresence>
 
-             {/* Assign Assessment Dialog remains at top level */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+             {/* Assign Assessment Dialog */}
+            <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Assign Assessment to "{selectedCohort?.name}"</DialogTitle>
@@ -305,8 +341,50 @@ export default function PipelinePage() {
                         </Select>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setIsAssignDialogOpen(false)}>Cancel</Button>
                         <Button onClick={handleAssignAssessment} disabled={!selectedTemplateId}>Confirm & Send</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+             {/* Edit Cohort Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Cohort: {selectedCohort?.name}</DialogTitle>
+                        <DialogDescription>Modify the cohort name and manage its members.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="cohortNameEdit">Cohort Name</Label>
+                            <Input id="cohortNameEdit" value={draftCohortName} onChange={e => setDraftCohortName(e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                             <Label>Manage Members ({selectedCandidates.size})</Label>
+                             <ScrollArea className="h-72 w-full rounded-md border p-2">
+                                <div className="space-y-2">
+                                 {allCandidates.map(candidate => (
+                                     <div key={candidate.id} className={cn("p-2 border rounded-lg flex items-center gap-4 transition-colors", selectedCandidates.has(candidate.id) && "bg-primary/10")}>
+                                         <Checkbox id={`edit-candidate-${candidate.id}`} checked={selectedCandidates.has(candidate.id)} onCheckedChange={() => handleSelectCandidate(candidate.id)} />
+                                         <Label htmlFor={`edit-candidate-${candidate.id}`} className="flex-grow flex items-center gap-2">
+                                            <Avatar className="h-8 w-8">
+                                                 <AvatarImage src={candidate.avatarUrl} alt={candidate.name} />
+                                                 <AvatarFallback>{candidate.name?.charAt(0)}</AvatarFallback>
+                                             </Avatar>
+                                             <div>
+                                                <p className="font-semibold">{candidate.name}</p>
+                                                <p className="text-xs text-muted-foreground">{candidate.email}</p>
+                                             </div>
+                                         </Label>
+                                     </div>
+                                 ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
+                        <Button onClick={handleUpdateCohort}>Save Changes</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -317,7 +395,7 @@ export default function PipelinePage() {
 
 // --- View Components ---
 
-const MainPipelineView = ({ cohorts, jobDescription, setJobDescription, handleRunAiMatching, isAiMatching, onManualCreate, handleOpenDialog, router }: any) => (
+const MainPipelineView = ({ cohorts, jobDescription, setJobDescription, handleRunAiMatching, isAiMatching, onManualCreate, handleOpenAssignDialog, handleOpenEditDialog, router }: any) => (
     <>
         <h1 className="text-4xl font-bold mb-8">Recruitment Pipeline</h1>
         
@@ -371,8 +449,22 @@ const MainPipelineView = ({ cohorts, jobDescription, setJobDescription, handleRu
                     <motion.div key={cohort.id} variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
                         <Card className="h-full flex flex-col bg-card/60 backdrop-blur-sm border-border/20 shadow-lg">
                             <CardHeader>
-                                <CardTitle>{cohort.name}</CardTitle>
-                                <CardDescription>Created on {format(new Date(cohort.createdAt), 'PP')}</CardDescription>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle>{cohort.name}</CardTitle>
+                                        <CardDescription>Created on {format(new Date(cohort.createdAt), 'PP')}</CardDescription>
+                                    </div>
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onSelect={() => handleOpenEditDialog(cohort)}>
+                                                <Edit className="mr-2 h-4 w-4" /> Edit Cohort
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </CardHeader>
                             <CardContent className="flex-grow">
                                 <div className="flex items-center gap-2 text-muted-foreground mb-4"><Users className="h-4 w-4" /><span>{cohort.candidateIds.length} candidate(s)</span></div>
@@ -393,7 +485,7 @@ const MainPipelineView = ({ cohorts, jobDescription, setJobDescription, handleRu
                                 {cohort.assignedAssessmentId ? (
                                     <Button className="w-full" onClick={() => router.push(`/admin/pipeline/${cohort.id}`)}><BarChart2 className="mr-2 h-4 w-4" /> View Leaderboard</Button>
                                 ) : (
-                                    <Button className="w-full" onClick={() => handleOpenDialog(cohort)}><Send className="mr-2 h-4 w-4" /> Assign Assessment</Button>
+                                    <Button className="w-full" onClick={() => handleOpenAssignDialog(cohort)}><Send className="mr-2 h-4 w-4" /> Assign Assessment</Button>
                                 )}
                             </CardFooter>
                         </Card>
