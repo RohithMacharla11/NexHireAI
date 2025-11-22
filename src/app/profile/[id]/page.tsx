@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { analyzeResume } from '@/ai/flows/analyze-resume-flow';
 import { PersonalUnderstanding } from '@/components/profile/PersonalUnderstanding';
 import { motion } from 'framer-motion';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '../ui/card';
+import { Button } from '../ui/button';
 
 type View = 'profile' | 'edit' | 'analysis';
 
@@ -193,9 +193,9 @@ export default function ProfilePage() {
   const hasAnalysis = !!profileData.analysis?.summary;
 
   return (
-    <div className="w-full h-full p-4 md:p-8">
+    <div className="w-full h-full flex items-center justify-center md:items-end md:justify-end p-4 md:p-8">
         <motion.div
-            className="w-full h-full preserve-3d"
+            className="w-full max-w-4xl h-[85vh] preserve-3d"
             initial={false}
             animate={{ rotateY: rotation }}
             transition={{ duration: 0.7, ease: 'easeInOut' }}
@@ -241,10 +241,8 @@ export default function ProfilePage() {
 
 const ProfileSkeleton = () => (
     <div className="relative h-full w-full flex items-center justify-center p-4">
-        <div className="container mx-auto px-4 md:px-6 flex items-center justify-center">
-            <div className="w-full max-w-6xl">
-                <Skeleton className="h-[70vh] w-full rounded-3xl" />
-            </div>
+        <div className="w-full max-w-4xl">
+            <Skeleton className="h-[85vh] w-full rounded-3xl" />
         </div>
     </div>
 );
