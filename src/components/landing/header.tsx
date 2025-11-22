@@ -143,32 +143,9 @@ export function Header() {
                       <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
                     </DropdownMenuItem>
                     
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <NotebookPen className="mr-2 h-4 w-4" />
-                        <span>Assessments</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          <DropdownMenuItem asChild>
-                            <Link href="/skill-assessment">
-                                <BookCopy className="mr-2 h-4 w-4" />Practice by Role
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Official Assessments</DropdownMenuLabel>
-                          {assessmentTemplates.length > 0 ? (
-                            assessmentTemplates.map(template => (
-                              <DropdownMenuItem key={template.id} onSelect={() => handleStartAssessment(template)}>
-                                {template.name}
-                              </DropdownMenuItem>
-                            ))
-                          ) : (
-                             <DropdownMenuItem disabled>No official assessments</DropdownMenuItem>
-                          )}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
+                    <DropdownMenuItem asChild>
+                      <Link href="/skill-assessment"><NotebookPen className="mr-2 h-4 w-4" />Assessments</Link>
+                    </DropdownMenuItem>
 
                     <DropdownMenuItem asChild>
                       <Link href="/profile/me"><User className="mr-2 h-4 w-4" />Profile</Link>
