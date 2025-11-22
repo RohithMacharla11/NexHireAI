@@ -62,20 +62,18 @@ export default function LeaderboardPage() {
 
             let attempts: AssessmentAttempt[] = [];
             if (cohortData.assignedAssessmentId) {
-                // Query the collection group for all assessments attempts that match the assigned ID
-                const attemptsColGroup = collectionGroup(firestore, 'assessments');
-                const attemptsQuery = query(
-                    attemptsColGroup, 
-                    where('assessmentId', '==', cohortData.assignedAssessmentId),
-                    where('userId', 'in', cohortData.candidateIds)
+                // NEW STRATEGY: Fetch attempts directly for each user.
+                const attemptPromises = cohortData.candidateIds.map(userId => 
+                    getDoc(doc(firestore, `users/${userId}/assessments`, cohortData.assignedAssessmentId!))
                 );
-                const attemptsSnap = await getDocs(attemptsQuery);
-                attempts = attemptsSnap.docs.map(d => d.data() as AssessmentAttempt);
+                const attemptDocs = await Promise.all(attemptPromises);
+                attempts = attemptDocs
+                    .filter(d => d.exists())
+                    .map(d => ({ id: d.id, ...d.data() } as AssessmentAttempt));
             }
             
             const entries = users.map(user => {
                 const userAttempt = attempts.find(a => a.userId === user.id);
-                // In a real app, status might be stored in the cohort doc, e.g., cohortData.statuses[user.id]
                 const status: CandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || 'Shortlisted'; 
                 return { user, attempt: userAttempt, status };
             });
