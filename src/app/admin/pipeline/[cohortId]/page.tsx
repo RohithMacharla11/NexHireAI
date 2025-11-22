@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, query, onSnapshot, getDoc, doc, where, getDocs, writeBatch, updateDoc, collectionGroup } from 'firebase/firestore';
+import { collection, query, onSnapshot, getDoc, doc, where, getDocs, writeBatch, updateDoc, collectionGroup, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { Cohort, User, AssessmentAttempt, CandidateStatus } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
