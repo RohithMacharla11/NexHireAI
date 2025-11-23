@@ -24,6 +24,17 @@ const itemVariants = {
     visible: { y: 0, opacity: 1 },
 };
 
+// Helper to reliably get a timestamp in milliseconds
+const getTimestamp = (timestamp: any): number => {
+    if (!timestamp) return 0;
+    if (typeof timestamp === 'number') return timestamp;
+    if (typeof timestamp === 'object' && timestamp.seconds) {
+        return timestamp.seconds * 1000;
+    }
+    return 0;
+};
+
+
 export default function AnalyticsPage() {
     const { firestore } = initializeFirebase();
     const router = useRouter();
@@ -56,11 +67,12 @@ export default function AnalyticsPage() {
 
                 // --- Process Stats ---
                 const now = new Date();
-                const oneMonthAgo = subMonths(now, 1);
+                const oneMonthAgo = subMonths(now, 1).getTime();
+                
                 const newCandidatesCount = userSnap.docs.filter(doc => {
                     const data = doc.data() as User;
-                     const createdAt = data.createdAt ? (typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt as any).seconds * 1000) : 0;
-                    return createdAt > oneMonthAgo.getTime();
+                    const createdAt = getTimestamp(data.createdAt);
+                    return createdAt > oneMonthAgo;
                 }).length;
 
                 const totalAttempts = attemptSnap.size;
@@ -84,7 +96,7 @@ export default function AnalyticsPage() {
                 }
                 userSnap.docs.forEach(doc => {
                      const c = doc.data() as User;
-                     const createdAt = c.createdAt ? (typeof c.createdAt === 'number' ? c.createdAt : (c.createdAt as any).seconds * 1000) : 0;
+                     const createdAt = getTimestamp(c.createdAt);
                      if (createdAt) {
                          const joinDate = new Date(createdAt);
                          if (joinDate >= startOfMonth(subMonths(now, 5))) {
@@ -129,10 +141,13 @@ export default function AnalyticsPage() {
                             } catch {}
                          }
                          
+                         const submittedAt = getTimestamp(attemptData.submittedAt);
+                         const startedAt = getTimestamp(attemptData.startedAt);
+
                          return {
                              ...userData,
                              score: Math.round(attemptData.finalScore || 0),
-                             time: attemptData.submittedAt && attemptData.startedAt ? Math.round((attemptData.submittedAt - attemptData.startedAt) / 60000) : 0,
+                             time: submittedAt && startedAt ? Math.round((submittedAt - startedAt) / 60000) : 0,
                              role: roleName,
                          };
                      })
@@ -301,5 +316,3 @@ const getRankIcon = (rank: number) => {
     if (rank === 2) return <Gem className="h-6 w-6 text-amber-600" />;
     return <span className="text-lg font-bold text-muted-foreground">{rank + 1}</span>;
 };
-
-    
