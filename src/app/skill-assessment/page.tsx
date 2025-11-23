@@ -29,6 +29,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { v4 as uuidv4 } from 'uuid';
+
+type PendingAssessment = 
+    | { type: 'practice'; roleId: string; roleName: string; }
+    | { type: 'official'; template: AssessmentTemplate; };
 
 export default function SkillAssessmentPage() {
   const { user, isLoading: authIsLoading } = useAuth();
@@ -44,6 +49,10 @@ export default function SkillAssessmentPage() {
   const [isPopulating, setIsPopulating] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [generatingRoleId, setGeneratingRoleId] = useState<string | null>(null);
+
+  // New state to manage the confirmation dialog
+  const [showInProgressDialog, setShowInProgressDialog] = useState(false);
+  const [pendingAssessmentAction, setPendingAssessmentAction] = useState<PendingAssessment | null>(null);
 
   const handlePopulate = async () => {
     setIsPopulating(true);
@@ -126,7 +135,33 @@ export default function SkillAssessmentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firestore, user, isPopulating]);
   
+  const executeAssessmentStart = (action: PendingAssessment) => {
+    if (action.type === 'practice') {
+      startPracticeAssessment(action.roleId, action.roleName);
+    } else if (action.type === 'official') {
+      startOfficialAssessment(action.template);
+    }
+  }
+
   const handleStartPractice = (roleId: string, roleName: string) => {
+    if (assessmentStore.assessment) {
+      setPendingAssessmentAction({ type: 'practice', roleId, roleName });
+      setShowInProgressDialog(true);
+    } else {
+      startPracticeAssessment(roleId, roleName);
+    }
+  }
+  
+  const handleStartOfficial = (template: AssessmentTemplate) => {
+     if (assessmentStore.assessment) {
+      setPendingAssessmentAction({ type: 'official', template });
+      setShowInProgressDialog(true);
+    } else {
+      startOfficialAssessment(template);
+    }
+  }
+
+  const startPracticeAssessment = (roleId: string, roleName: string) => {
     startTransition(async () => {
       setGeneratingRoleId(roleId);
       toast({ title: `Generating Practice for ${roleName}`, description: 'The AI is creating a unique set of 30 questions. Please wait.' });
@@ -144,7 +179,7 @@ export default function SkillAssessmentPage() {
     });
   }
 
-  const handleStartOfficial = async (template: AssessmentTemplate) => {
+  const startOfficialAssessment = async (template: AssessmentTemplate) => {
     // We must fetch the questions for the template before starting
     if (!template.questionIds || template.questionIds.length === 0) {
         toast({ title: "Not Ready", description: "This assessment has no questions. Please contact an admin.", variant: "destructive" });
@@ -181,6 +216,15 @@ export default function SkillAssessmentPage() {
         toast({ title: "Failed to load", description: "Could not retrieve questions for this assessment.", variant: "destructive" });
     }
   }
+  
+  const handleDiscardAndStart = () => {
+    assessmentStore.reset();
+    if(pendingAssessmentAction) {
+        executeAssessmentStart(pendingAssessmentAction);
+    }
+    setShowInProgressDialog(false);
+    setPendingAssessmentAction(null);
+  }
 
   if (authIsLoading || isLoading || isPopulating || !assessmentStore.isHydrated) {
     return (
@@ -192,155 +236,130 @@ export default function SkillAssessmentPage() {
       </div>
     );
   }
-  
-  if (assessmentStore.assessment) {
-    return (
-        <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary flex items-center justify-center p-4">
-             <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                <Card className="max-w-lg bg-card/70 backdrop-blur-sm border-border/20 shadow-xl">
-                    <CardHeader>
-                        <CardTitle>Assessment in Progress</CardTitle>
-                        <CardDescription>You have an unfinished assessment for:</CardDescription>
-                         <p className="text-lg font-semibold text-primary pt-2">{assessmentStore.assessment.roleName}</p>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">You can resume where you left off or discard this attempt and start a new one.</p>
-                    </CardContent>
-                    <CardFooter className="flex gap-4">
-                         <Button className="w-full" onClick={() => router.push(`/assessment/${assessmentStore.assessment?.id}`)}>
-                            <Play className="mr-2 h-4 w-4" /> Resume Test
-                        </Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" className="w-full">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Discard & Restart
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete your current assessment progress.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => assessmentStore.reset()}>
-                                    Yes, Discard
-                                </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </CardFooter>
-                </Card>
-            </motion.div>
-        </div>
-    )
-  }
-
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary">
-       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
-      <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
-        
-        {/* Official Assessments */}
-        <div>
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-                <h1 className="text-4xl font-bold flex items-center gap-3"><Sparkles className="text-primary"/> Official Assessments</h1>
-                <p className="text-lg text-muted-foreground">These are assessments assigned to you by recruiters.</p>
-            </motion.div>
-            
-            {assignedTemplates.length > 0 ? (
-                 <motion.div
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                    variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } }}}
-                    initial="hidden"
-                    animate="show"
-                >
-                    {assignedTemplates.map((template) => {
-                        const isAttempted = attemptedTemplateIds.has(template.id);
-                        return (
-                        <motion.div key={template.id} variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
-                            <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg transition-all duration-300 hover:border-primary/60 hover:shadow-primary/10 hover:-translate-y-1 flex flex-col">
-                                <CardHeader>
-                                    <CardTitle>{template.name}</CardTitle>
-                                    <CardDescription>Role: <Badge variant="outline">{template.role}</Badge></CardDescription>
-                                </CardHeader>
-                                <CardContent className="flex-grow">
-                                    <p className="text-sm text-muted-foreground">{template.questionCount} Questions, {template.duration} Minutes</p>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button 
-                                      className="w-full mt-auto" 
-                                      onClick={() => handleStartOfficial(template)}
-                                      disabled={isAttempted}
-                                    >
-                                        {isAttempted ? <><CheckCircle className="mr-2 h-4 w-4" /> Attempted</> : 'Start Official Assessment'}
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        </motion.div>
-                    )})}
-                 </motion.div>
-            ) : (
-                <Card className="bg-card/30 border-dashed">
-                    <CardContent className="p-8 text-center text-muted-foreground">
-                        <AlertTriangle className="mx-auto h-8 w-8 mb-2"/>
-                        You have no official assessments assigned to you yet.
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-        
-        <Separator />
+    <>
+      <div className="relative min-h-[calc(100vh-5rem)] w-full bg-secondary">
+        <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
+        <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
+          
+          {/* Official Assessments */}
+          <div>
+              <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+                  <h1 className="text-4xl font-bold flex items-center gap-3"><Sparkles className="text-primary"/> Official Assessments</h1>
+                  <p className="text-lg text-muted-foreground">These are assessments assigned to you by recruiters.</p>
+              </motion.div>
+              
+              {assignedTemplates.length > 0 ? (
+                  <motion.div
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                      variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } }}}
+                      initial="hidden"
+                      animate="show"
+                  >
+                      {assignedTemplates.map((template) => {
+                          const isAttempted = attemptedTemplateIds.has(template.id);
+                          return (
+                          <motion.div key={template.id} variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
+                              <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg transition-all duration-300 hover:border-primary/60 hover:shadow-primary/10 hover:-translate-y-1 flex flex-col">
+                                  <CardHeader>
+                                      <CardTitle>{template.name}</CardTitle>
+                                      <CardDescription>Role: <Badge variant="outline">{template.role}</Badge></CardDescription>
+                                  </CardHeader>
+                                  <CardContent className="flex-grow">
+                                      <p className="text-sm text-muted-foreground">{template.questionCount} Questions, {template.duration} Minutes</p>
+                                  </CardContent>
+                                  <CardFooter>
+                                      <Button 
+                                        className="w-full mt-auto" 
+                                        onClick={() => handleStartOfficial(template)}
+                                        disabled={isAttempted}
+                                      >
+                                          {isAttempted ? <><CheckCircle className="mr-2 h-4 w-4" /> Attempted</> : 'Start Official Assessment'}
+                                      </Button>
+                                  </CardFooter>
+                              </Card>
+                          </motion.div>
+                      )})}
+                  </motion.div>
+              ) : (
+                  <Card className="bg-card/30 border-dashed">
+                      <CardContent className="p-8 text-center text-muted-foreground">
+                          <AlertTriangle className="mx-auto h-8 w-8 mb-2"/>
+                          You have no official assessments assigned to you yet.
+                      </CardContent>
+                  </Card>
+              )}
+          </div>
+          
+          <Separator />
 
-        {/* Practice by Role */}
-        <div>
-             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-                <h2 className="text-3xl font-bold flex items-center gap-3"><BookCopy /> Practice by Role</h2>
-                <p className="text-lg text-muted-foreground">Generate a unique practice test for any role to sharpen your skills.</p>
-            </motion.div>
-            
-            {roles.length > 0 ? (
-                <motion.div
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                    variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } }}}
-                    initial="hidden"
-                    animate="show"
-                >
-                    {roles.map((role) => (
-                    <motion.div key={role.id} variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
-                        <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg transition-all duration-300 hover:border-primary/60 hover:shadow-primary/10 hover:-translate-y-1 flex flex-col">
-                            <CardHeader>
-                                <CardTitle>{role.name}</CardTitle>
-                                <CardDescription>{role.description}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex-grow">
-                                <h4 className="text-sm font-semibold mb-2">Key Skills:</h4>
-                                <div className="flex flex-wrap gap-1">
-                                    {role.subSkills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
-                                </div>
-                            </CardContent>
-                             <CardFooter>
-                                <Button 
-                                    className="w-full mt-auto" 
-                                    variant="secondary"
-                                    onClick={() => handleStartPractice(role.id, role.name)} 
-                                    disabled={isPending}
-                                >
-                                    {isPending && generatingRoleId === role.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    {isPending && generatingRoleId === role.id ? 'Generating...' : 'Start Practice'}
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    </motion.div>
-                    ))}
-                </motion.div>
-            ) : null }
+          {/* Practice by Role */}
+          <div>
+              <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+                  <h2 className="text-3xl font-bold flex items-center gap-3"><BookCopy /> Practice by Role</h2>
+                  <p className="text-lg text-muted-foreground">Generate a unique practice test for any role to sharpen your skills.</p>
+              </motion.div>
+              
+              {roles.length > 0 ? (
+                  <motion.div
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                      variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } }}}
+                      initial="hidden"
+                      animate="show"
+                  >
+                      {roles.map((role) => (
+                      <motion.div key={role.id} variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
+                          <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg transition-all duration-300 hover:border-primary/60 hover:shadow-primary/10 hover:-translate-y-1 flex flex-col">
+                              <CardHeader>
+                                  <CardTitle>{role.name}</CardTitle>
+                                  <CardDescription>{role.description}</CardDescription>
+                              </CardHeader>
+                              <CardContent className="flex-grow">
+                                  <h4 className="text-sm font-semibold mb-2">Key Skills:</h4>
+                                  <div className="flex flex-wrap gap-1">
+                                      {role.subSkills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+                                  </div>
+                              </CardContent>
+                              <CardFooter>
+                                  <Button 
+                                      className="w-full mt-auto" 
+                                      variant="secondary"
+                                      onClick={() => handleStartPractice(role.id, role.name)} 
+                                      disabled={isPending}
+                                  >
+                                      {isPending && generatingRoleId === role.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                      {isPending && generatingRoleId === role.id ? 'Generating...' : 'Start Practice'}
+                                  </Button>
+                              </CardFooter>
+                          </Card>
+                      </motion.div>
+                      ))}
+                  </motion.div>
+              ) : null }
+          </div>
         </div>
       </div>
-    </div>
+
+       <AlertDialog open={showInProgressDialog} onOpenChange={setShowInProgressDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Assessment in Progress</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have an unfinished assessment for "{assessmentStore.assessment?.roleName}". Resuming will take you back where you left off. Discarding will start a new test and your previous progress will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingAssessmentAction(null)}>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={() => router.push(`/assessment/${assessmentStore.assessment?.id}`)}>
+              <Play className="mr-2 h-4 w-4" /> Resume Test
+            </Button>
+            <AlertDialogAction onClick={handleDiscardAndStart} className="bg-destructive hover:bg-destructive/90">
+              <Trash2 className="mr-2 h-4 w-4" /> Discard & Start New
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
