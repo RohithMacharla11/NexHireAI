@@ -113,14 +113,25 @@
 
 @media print {
   body {
-    background: white;
-    color: black;
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .no-print {
+  .no-print, header, nav, aside {
     display: none !important;
   }
   .printable-area {
     padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100%;
+    max-width: 100%;
+  }
+  .printable-area > div, .printable-area > main {
+    padding: 0 !important;
+    margin: 0 !important;
   }
   .printable-area .bg-card\/60,
   .printable-area .bg-card\/80,
@@ -128,20 +139,21 @@
   .printable-area .backdrop-blur-sm,
   .printable-area .shadow-lg,
   .printable-area .border-border\/20,
-  .printable-area .absolute {
+  .printable-area .absolute,
+  .printable-area .relative:not(.printable-area) {
     background: none !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
     border: none !important;
+    position: static !important;
   }
   .printable-area .grid {
-    display: block !important;
+    display: grid !important; /* Keep grid for layout */
   }
    .printable-area .lg\:col-span-3,
   .printable-area .lg\:col-span-2,
   .printable-area .md\:grid-cols-3 {
-    width: 100% !important;
-    grid-column: span 1 / span 1 !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
   .printable-area h1, .printable-area h2, .printable-area h3, .printable-area h4 {
     color: black !important;
@@ -149,6 +161,18 @@
    .printable-area .text-muted-foreground, .printable-area .font-semibold.text-muted-foreground {
     color: #4a5568 !important;
   }
+  .printable-area .text-primary {
+    color: hsl(var(--primary)) !important;
+  }
+   .printable-area [class*="bg-primary/"], .printable-area [class*="bg-green-500/"], .printable-area [class*="bg-red-500/"] {
+      background-color: transparent !important;
+      border: 1px solid #ccc;
+   }
+   .printable-area .recharts-responsive-container {
+     width: 100% !important;
+     height: 300px !important; /* Give fixed height */
+   }
+   main {
+     overflow-y: visible !important;
+   }
 }
-
-    
