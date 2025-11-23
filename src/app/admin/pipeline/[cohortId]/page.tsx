@@ -17,10 +17,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+type ExtendedCandidateStatus = CandidateStatus | 'Yet to Take';
+
 type LeaderboardEntry = {
     user: User;
     attempt?: AssessmentAttempt;
-    status: CandidateStatus;
+    status: ExtendedCandidateStatus;
 };
 
 export default function LeaderboardPage() {
@@ -74,7 +76,14 @@ export default function LeaderboardPage() {
             
             const entries = users.map(user => {
                 const userAttempt = attempts.find(a => a.userId === user.id);
-                const status: CandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || 'Shortlisted'; 
+                let status: ExtendedCandidateStatus;
+
+                if (!userAttempt && cohortData.assignedAssessmentId) {
+                    status = 'Yet to Take';
+                } else {
+                    status = (cohortData.statuses && cohortData.statuses[user.id]) || 'Shortlisted';
+                }
+                
                 return { user, attempt: userAttempt, status };
             });
 
@@ -198,7 +207,7 @@ export default function LeaderboardPage() {
                                         )}
                                     </TableCell>
                                      <TableCell className="text-center">
-                                        <Badge variant="outline">{entry.status}</Badge>
+                                        <Badge variant={entry.status === 'Yet to Take' ? 'destructive' : 'outline'}>{entry.status}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
                                          <DropdownMenu>
@@ -229,3 +238,4 @@ export default function LeaderboardPage() {
         </div>
     );
 }
+
