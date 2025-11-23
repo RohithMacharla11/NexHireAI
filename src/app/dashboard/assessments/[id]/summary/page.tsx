@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc, collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, addDoc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { AssessmentAttempt, AssessmentTemplate, Role, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';

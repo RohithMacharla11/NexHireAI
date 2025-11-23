@@ -183,7 +183,7 @@ export default function AssessmentResultPage() {
             
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-between items-start mb-8">
                 <div>
-                     <Button variant="ghost" onClick={() => router.push('/dashboard/assessments')} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> Back to All Assessments</Button>
+                     <Button variant="ghost" onClick={() => router.push('/skill-assessment')} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> Back to All Assessments</Button>
                     <h1 className="text-4xl font-bold">{currentAttempt.roleName} - Results</h1>
                 </div>
                 <div className="flex flex-col items-end gap-2">
