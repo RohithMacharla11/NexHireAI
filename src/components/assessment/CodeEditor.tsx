@@ -19,7 +19,7 @@ import type { Question, CodeExecutionResult, UserResponse } from '@/lib/types';
 
 interface CodeEditorProps {
     question: Question;
-    response: Partial<UserResponse>;
+    response?: Partial<UserResponse>;
     onResponseChange: (change: Partial<UserResponse>) => void;
     isReadOnly?: boolean;
 }
@@ -29,9 +29,9 @@ export function CodeEditor({ question, response, onResponseChange, isReadOnly = 
     const [activeTab, setActiveTab] = useState(isReadOnly ? 'output' : 'testcases');
     const { toast } = useToast();
 
-    const code = response.code || question.starterCode || '';
-    const language = response.language || 'javascript';
-    const executionResult = response.executionResult;
+    const code = response?.code || question.starterCode || '';
+    const language = response?.language || 'javascript';
+    const executionResult = response?.executionResult;
 
     const handleRunCode = () => {
         if(isReadOnly) return;
@@ -161,3 +161,5 @@ export function CodeEditor({ question, response, onResponseChange, isReadOnly = 
         </div>
     )
 }
+
+    

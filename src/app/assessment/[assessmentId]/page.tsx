@@ -13,11 +13,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Timer, Loader2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
-import { doc, addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, collection } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { AssessmentAttempt, UserResponse, Question } from '@/lib/types';
 import { CodeEditor } from '@/components/assessment/CodeEditor';
 import { scoreAssessment } from '@/ai/flows/score-assessment-flow';
+import { v4 as uuidv4 } from 'uuid';
 
 const AssessmentRunner = () => {
   const router = useRouter();
@@ -119,6 +120,7 @@ const AssessmentRunner = () => {
       toast({ title: "Submitting Assessment", description: "Evaluating your answers. This may take a moment." });
       
       const finalResponses = Object.values(responses);
+      const newAttemptId = uuidv4(); // Generate a unique ID for this attempt
 
       const questionSnapshots = assessment.questions.map(q => ({
           id: q.id,
@@ -133,33 +135,30 @@ const AssessmentRunner = () => {
       }));
 
       const attemptShell: AssessmentAttempt = {
-          id: assessment.id, // This is the template/practice ID, not the doc ID
+          id: newAttemptId, // Use the new unique ID
           userId: user.id,
           assessmentId: assessment.id,
           roleId: assessment.roleId,
           startedAt: startTime,
           submittedAt: Date.now(),
           responses: finalResponses,
-          questions: assessment.questions, // Pass full questions for scoring
-          rootAssessmentId: assessment.rootAssessmentId || assessment.roleId, // Use root or role ID
+          questions: assessment.questions,
+          rootAssessmentId: assessment.rootAssessmentId || assessment.templateId || assessment.roleId,
       };
 
       try {
           const finalAttempt = await scoreAssessment(attemptShell);
           const { questions, ...attemptToSave } = finalAttempt;
 
-          const assessmentsCollectionRef = collection(firestore, `users/${user.id}/assessments`);
-          // Use addDoc to get a unique auto-generated ID for this attempt
-          const newAttemptDocRef = await addDoc(assessmentsCollectionRef, {
+          const attemptDocRef = doc(firestore, `users/${user.id}/assessments`, newAttemptId);
+          await setDoc(attemptDocRef, {
               ...attemptToSave,
-              questionSnapshots, // Save the snapshots for historical accuracy
-              userId: user.id,
+              questionSnapshots: questionSnapshots,
           });
           
           toast({ title: "Assessment Submitted!", description: "Redirecting to your results summary." });
           reset();
-          // Redirect to the results page using the NEW, UNIQUE document ID
-          router.push(`/dashboard/assessments/${newAttemptDocRef.id}`);
+          router.push(`/dashboard/assessments/${newAttemptId}`);
 
       } catch (error) {
           console.error("Error submitting and scoring assessment:", error);
@@ -272,3 +271,5 @@ const AssessmentRunner = () => {
 };
 
 export default AssessmentRunner;
+
+    

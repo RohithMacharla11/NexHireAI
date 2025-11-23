@@ -1,5 +1,4 @@
 
-
 export type RoleType = 'candidate' | 'recruiter' | 'admin';
 
 export interface Role {
@@ -210,3 +209,5 @@ export interface Notification {
     isRead: boolean;
     createdAt: number;
 }
+
+    

@@ -74,7 +74,7 @@ export default function AssessmentResultPage() {
     const [history, setHistory] = useState<AttemptWithDetails[]>([]);
     const [currentAttempt, setCurrentAttempt] = useState<AttemptWithDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const initialAttemptId = params.id as string;
+    const attemptId = params.id as string;
 
     const getDetailedAttempt = async (attemptData: AssessmentAttempt): Promise<AttemptWithDetails> => {
         let roleName = 'Unknown Role';
@@ -105,13 +105,13 @@ export default function AssessmentResultPage() {
     }
 
     useEffect(() => {
-        if (!user || !firestore || !initialAttemptId) return;
+        if (!user || !firestore || !attemptId) return;
 
         const fetchAttemptAndHistory = async () => {
             setIsLoading(true);
             try {
                 // Step 1: Directly fetch the specific assessment attempt using the unique ID from the URL
-                const initialAttemptDocRef = doc(firestore, 'users', user.id, 'assessments', initialAttemptId);
+                const initialAttemptDocRef = doc(firestore, 'users', user.id, 'assessments', attemptId);
                 const initialAttemptSnap = await getDoc(initialAttemptDocRef);
 
                 if (!initialAttemptSnap.exists()) {
@@ -150,7 +150,7 @@ export default function AssessmentResultPage() {
         };
 
         fetchAttemptAndHistory();
-    }, [user, firestore, initialAttemptId]);
+    }, [user, firestore, attemptId]);
 
     const radarData = useMemo(() => {
         if (!currentAttempt?.skillScores) return [];
@@ -325,3 +325,5 @@ const InfoCard = ({ title, value }: { title: string, value: string }) => (
         <p className="text-3xl font-bold mt-2">{value}</p>
     </Card>
 )
+
+    
