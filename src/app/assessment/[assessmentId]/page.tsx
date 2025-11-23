@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Timer, Loader2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
-import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { AssessmentAttempt } from '@/lib/types';
 import { CodeEditor } from '@/components/assessment/CodeEditor';
@@ -20,7 +20,6 @@ import { scoreAssessment } from '@/ai/flows/score-assessment-flow';
 
 const AssessmentRunner = () => {
   const router = useRouter();
-  const params = useParams();
   const { toast } = useToast();
   const { firestore } = initializeFirebase();
   const [isSubmitting, startSubmitting] = useTransition();
@@ -90,9 +89,9 @@ const AssessmentRunner = () => {
 
       // A shell object that contains all data needed for scoring
       const attemptShell: AssessmentAttempt = {
-          id: assessment.id, // Temporary ID, will be replaced by Firestore's generated ID
+          id: assessment.id, // This is temporary, will be replaced by Firestore's generated ID
           userId: user.id,
-          assessmentId: assessment.isTemplate ? assessment.templateId! : assessment.id,
+          assessmentId: assessment.id,
           roleId: assessment.roleId,
           startedAt: startTime,
           submittedAt: Date.now(),
@@ -102,13 +101,14 @@ const AssessmentRunner = () => {
       };
 
       try {
-          // The single flow now returns the complete object including scores and feedback
+          // The scoring flow returns the complete object with scores and feedback
           const finalAttempt = await scoreAssessment(attemptShell);
           
-          // Don't save questions back to the attempt doc
+          // We don't want to save the full questions array back to the attempt document
           const { questions, ...attemptToSave } = finalAttempt;
 
           const assessmentsCollectionRef = collection(firestore, `users/${user.id}/assessments`);
+          // Use addDoc to create a new document with a unique ID
           const newAttemptDocRef = await addDoc(assessmentsCollectionRef, {
               ...attemptToSave,
               userId: user.id, // ensure userId is present
@@ -116,7 +116,8 @@ const AssessmentRunner = () => {
           
           toast({ title: "Assessment Submitted!", description: "Redirecting to your results summary." });
           reset();
-          router.push(`/dashboard/assessments/${newAttemptDocRef.id}/summary`);
+          // Redirect to the results page using the NEW unique document ID
+          router.push(`/dashboard/assessments/${newAttemptDocRef.id}`);
 
       } catch (error) {
           console.error("Error submitting and scoring assessment:", error);
@@ -126,7 +127,7 @@ const AssessmentRunner = () => {
     });
   };
 
-  if (authLoading || !assessment || !isHydrated) {
+  if (authLoading || !isHydrated || !assessment) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
