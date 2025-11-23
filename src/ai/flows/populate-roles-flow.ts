@@ -6,7 +6,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { collection, writeBatch, getDocs, query } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, query, doc } from 'firebase/firestore';
 import { initializeFirebaseForServer } from '@/firebase/server-init';
 
 // Zod schema for a single role
