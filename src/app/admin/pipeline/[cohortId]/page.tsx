@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -84,8 +85,6 @@ export default function LeaderboardPage() {
                         );
                         const attemptsSnapshot = await getDocs(userAttemptsQuery);
                         if (!attemptsSnapshot.empty) {
-                             // Firestore does not guarantee order without an orderBy clause, 
-                             // so if there are multiple attempts, find the latest one.
                              const userAttempts = attemptsSnapshot.docs.map(d => ({ ...d.data(), docId: d.id } as AssessmentAttempt));
                              userAttempts.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0));
                              return userAttempts[0];
@@ -257,7 +256,7 @@ export default function LeaderboardPage() {
                                                         <UserIcon className="mr-2 h-4 w-4" /> View Profile
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem 
-                                                        onSelect={() => router.push(`/dashboard/assessments/${entry.attempt?.docId}`)}
+                                                        onSelect={() => router.push(`/admin/assessments/results/${entry.attempt?.docId}?userId=${entry.user.id}`)}
                                                         disabled={!entry.attempt}
                                                     >
                                                         <BarChart className="mr-2 h-4 w-4" /> View Details
