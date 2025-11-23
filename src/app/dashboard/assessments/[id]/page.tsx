@@ -121,7 +121,7 @@ export default function AssessmentResultPage() {
                     return;
                 }
 
-                const initialAttemptData = { id: initialAttemptSnap.id, ...initialAttemptSnap.data() } as AssessmentAttempt;
+                const initialAttemptData = { ...initialAttemptSnap.data(), docId: initialAttemptSnap.id } as AssessmentAttempt;
                 const detailedInitialAttempt = await getDetailedAttempt(initialAttemptData);
                 setCurrentAttempt(detailedInitialAttempt);
 
@@ -134,7 +134,7 @@ export default function AssessmentResultPage() {
                     );
                     const historySnapshot = await getDocs(historyQuery);
                     const historyData = await Promise.all(
-                        historySnapshot.docs.map(doc => getDetailedAttempt({ id: doc.id, ...doc.data() } as AssessmentAttempt))
+                        historySnapshot.docs.map(doc => getDetailedAttempt({ ...doc.data(), docId: doc.id } as AssessmentAttempt))
                     );
                     setHistory(historyData);
                 } else {
@@ -189,13 +189,13 @@ export default function AssessmentResultPage() {
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     {history.length > 1 && (
-                         <Select value={currentAttempt.id} onValueChange={(id) => setCurrentAttempt(history.find(h => h.id === id) || null)}>
+                         <Select value={currentAttempt.docId} onValueChange={(id) => setCurrentAttempt(history.find(h => h.docId === id) || null)}>
                             <SelectTrigger className="w-[220px]">
                                 <SelectValue placeholder="View history..." />
                             </SelectTrigger>
                             <SelectContent>
                                 {history.map((h, i) => (
-                                    <SelectItem key={h.id} value={h.id}>
+                                    <SelectItem key={h.docId} value={h.docId!}>
                                         Attempt {i+1} - {new Date(h.submittedAt!).toLocaleDateString()}
                                     </SelectItem>
                                 ))}
@@ -325,5 +325,3 @@ const InfoCard = ({ title, value }: { title: string, value: string }) => (
         <p className="text-3xl font-bold mt-2">{value}</p>
     </Card>
 )
-
-    

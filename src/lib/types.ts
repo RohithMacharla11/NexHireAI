@@ -77,7 +77,8 @@ export type CandidateStatus = 'Shortlisted' | 'Under Review' | 'Hired' | 'Reject
 export type QuestionSnapshot = Pick<Question, 'id' | 'questionText' | 'options' | 'correctAnswer' | 'type' | 'skill' | 'difficulty' | 'starterCode' | 'testCases'>;
 
 export interface AssessmentAttempt {
-    id: string;
+    id: string; // The internal ID, e.g., from the assessment template or generated practice test
+    docId?: string; // The actual Firestore document ID
     userId: string;
     assessmentId: string; // The ID of the AssessmentTemplate or original practice assessment ID
     roleId: string;
@@ -209,5 +210,3 @@ export interface Notification {
     isRead: boolean;
     createdAt: number;
 }
-
-    

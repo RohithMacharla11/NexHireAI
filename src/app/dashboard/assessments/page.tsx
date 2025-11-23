@@ -35,14 +35,18 @@ export default function AssessmentsPage() {
         const querySnapshot = await getDocs(attemptsQuery);
         
         const attemptsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
-          const attempt = { id: docSnapshot.id, ...docSnapshot.data() } as AssessmentAttempt;
+          const attempt = { ...docSnapshot.data(), docId: docSnapshot.id } as AssessmentAttempt;
           let roleName = 'Unknown Role';
           
           if (attempt.roleId) {
-            const roleDocRef = doc(firestore, 'roles', attempt.roleId);
-            const roleDoc = await getDoc(roleDocRef);
-            if (roleDoc.exists()) {
-                roleName = (roleDoc.data() as Role).name;
+            try {
+              const roleDocRef = doc(firestore, 'roles', attempt.roleId);
+              const roleDoc = await getDoc(roleDocRef);
+              if (roleDoc.exists()) {
+                  roleName = (roleDoc.data() as Role).name;
+              }
+            } catch (e) {
+              console.error("Could not fetch role name for attempt:", attempt.id, e);
             }
           }
           return { ...attempt, roleName };
@@ -114,7 +118,7 @@ export default function AssessmentsPage() {
                 animate="visible"
             >
                 {attempts.map(attempt => (
-                  <motion.div key={attempt.id} variants={itemVariants}>
+                  <motion.div key={attempt.docId} variants={itemVariants}>
                     <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg transition-all duration-300 hover:border-primary/60 hover:shadow-primary/10 hover:-translate-y-1 flex flex-col">
                         <CardHeader>
                             <CardTitle className="text-xl">{attempt.roleName}</CardTitle>
@@ -141,7 +145,7 @@ export default function AssessmentsPage() {
                             </div>
                         </CardContent>
                         <CardFooter>
-                            <Button className="w-full" onClick={() => router.push(`/dashboard/assessments/${attempt.id}`)}>
+                            <Button className="w-full" onClick={() => router.push(`/dashboard/assessments/${attempt.docId}`)}>
                                 View Details
                             </Button>
                         </CardFooter>
@@ -153,5 +157,3 @@ export default function AssessmentsPage() {
     </div>
   );
 }
-
-    
