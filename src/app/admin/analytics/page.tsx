@@ -29,7 +29,7 @@ const itemVariants = {
 const getTimestamp = (timestamp: any): number => {
     if (!timestamp) return 0;
     // Handle server-generated Timestamps (e.g., from serverTimestamp())
-    if (timestamp.seconds) {
+    if (timestamp && typeof timestamp.seconds === 'number') {
         return timestamp.seconds * 1000;
     }
     // Handle client-generated numbers (e.g., from Date.now())

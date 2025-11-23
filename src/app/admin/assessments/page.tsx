@@ -62,16 +62,19 @@ export default function AssessmentsPage() {
             const templateIds = assessmentData.map(t => t.id);
             let avgScore = 0;
             if (templateIds.length > 0) {
-                const attemptsGroupRef = collectionGroup(firestore, 'assessments');
-                const attemptsSnap = await getDocs(query(attemptsGroupRef, where('isTemplate', '==', true)));
-                
-                const officialAttempts = attemptsSnap.docs
-                    .map(doc => doc.data() as AssessmentAttempt)
-                    .filter(attempt => attempt.templateId && templateIds.includes(attempt.templateId));
+                try {
+                    const attemptsGroupRef = collectionGroup(firestore, 'assessments');
+                    // Filter attempts where rootAssessmentId is one of the template IDs
+                    const attemptsSnap = await getDocs(query(attemptsGroupRef, where('rootAssessmentId', 'in', templateIds)));
+                    
+                    const officialAttempts = attemptsSnap.docs.map(doc => doc.data() as AssessmentAttempt);
 
-                if (officialAttempts.length > 0) {
-                    const totalScore = officialAttempts.reduce((acc, attempt) => acc + (attempt.finalScore || 0), 0);
-                    avgScore = Math.round(totalScore / officialAttempts.length);
+                    if (officialAttempts.length > 0) {
+                        const totalScore = officialAttempts.reduce((acc, attempt) => acc + (attempt.finalScore || 0), 0);
+                        avgScore = Math.round(totalScore / officialAttempts.length);
+                    }
+                } catch(e) {
+                    console.error("Could not query assessment attempts. This may be due to a missing Firestore index.", e)
                 }
             }
 

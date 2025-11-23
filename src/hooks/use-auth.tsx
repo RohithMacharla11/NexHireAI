@@ -69,10 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: firebaseUser.email!,
                 name: firebaseUser.displayName || "New User",
                 role: 'candidate', // Default role
-                createdAt: {
-                  seconds: Math.floor(Date.now() / 1000),
-                  nanoseconds: 0
-                }
+                createdAt: Date.now()
             };
             await setDoc(userDocRef, fullProfile, { merge: true });
         }
@@ -144,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatarUrl: `https://picsum.photos/seed/${firebaseUser.uid}/200`,
       xp: 0,
       badges: [],
-      createdAt: serverTimestamp(),
+      createdAt: Date.now(), // Use a client-side timestamp for reliability
       ...(role === 'candidate' && { candidateSpecific: { skills: [], locationPreferences: [] } }),
       ...(role === 'recruiter' && { recruiterSpecific: { 
           companyName: 'Example Corp',

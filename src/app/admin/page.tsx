@@ -39,9 +39,11 @@ type ActivityItem = {
 
 const getTimestamp = (timestamp: any): number => {
     if (!timestamp) return 0;
-    if (timestamp.seconds) {
+    // Handle server-generated Timestamps (e.g., from serverTimestamp())
+    if (timestamp && typeof timestamp.seconds === 'number') {
         return timestamp.seconds * 1000;
     }
+    // Handle client-generated numbers (e.g., from Date.now())
     if (typeof timestamp === 'number') {
         return timestamp;
     }
@@ -295,4 +297,3 @@ export default function AdminHomePage() {
     </div>
   );
 }
-
