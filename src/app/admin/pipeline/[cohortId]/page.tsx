@@ -8,7 +8,7 @@ import { initializeFirebase } from '@/firebase';
 import type { Cohort, User, AssessmentAttempt, CandidateStatus } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Crown, Medal, Gem, Users } from 'lucide-react';
+import { Loader2, ArrowLeft, Crown, Medal, Gem, Users, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -76,7 +76,8 @@ export default function LeaderboardPage() {
             
             const entries = users.map(user => {
                 const userAttempt = attempts.find(a => a.userId === user.id);
-                const status: ExtendedCandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || (userAttempt ? 'Shortlisted' : 'Yet to Take');
+                // Default status to 'Under Review' if they've taken it, otherwise check cohort status or 'Yet to Take'
+                const status: ExtendedCandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || (userAttempt ? 'Under Review' : 'Yet to Take');
                 
                 return { user, attempt: userAttempt, status };
             });
@@ -201,21 +202,26 @@ export default function LeaderboardPage() {
                                         )}
                                     </TableCell>
                                      <TableCell className="text-center">
-                                        <Badge variant={entry.status === 'Yet to Take' ? 'destructive' : 'outline'}>{entry.status}</Badge>
+                                        <Badge variant={entry.status === 'Yet to Take' ? 'destructive' : 'outline'} className="capitalize">{entry.status.toLowerCase()}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm">Change Status</Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent>
-                                                {(['Shortlisted', 'Under Review', 'Hired', 'Rejected'] as CandidateStatus[]).map(status => (
-                                                    <DropdownMenuItem key={status} onSelect={() => handleStatusChange(entry.user.id, status)} disabled={entry.status === status}>
-                                                        {status}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="flex gap-2 justify-end">
+                                            <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/candidates/${entry.user.id}`)}>
+                                                <Eye className="mr-2 h-4 w-4"/> View
+                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" size="sm">Change Status</Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    {(['Shortlisted', 'Under Review', 'Hired', 'Rejected'] as CandidateStatus[]).map(status => (
+                                                        <DropdownMenuItem key={status} onSelect={() => handleStatusChange(entry.user.id, status)} disabled={entry.status === status}>
+                                                            {status}
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
