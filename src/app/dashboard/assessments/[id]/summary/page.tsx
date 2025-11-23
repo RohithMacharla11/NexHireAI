@@ -35,7 +35,7 @@ export default function AssessmentSummaryPage() {
     const assessmentStore = useAssessmentStore();
     const [isRetaking, startRetakeTransition] = useTransition();
 
-    const [attempt, setAttempt] = useState<AssessmentAttempt & { roleName?: string } | null>(null);
+    const [attempt, setAttempt] = useState<(AssessmentAttempt & { roleName?: string }) | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -54,7 +54,7 @@ export default function AssessmentSummaryPage() {
                     router.push('/dashboard/assessments');
                     return;
                 }
-                const attemptData = { id: attemptDoc.id, ...attemptDoc.data() } as AssessmentAttempt;
+                const attemptData = { ...attemptDoc.data(), docId: attemptDoc.id } as AssessmentAttempt;
 
                 const roleDoc = await getDoc(doc(firestore, 'roles', attemptData.roleId));
                 const roleName = roleDoc.exists() ? (roleDoc.data() as Role).name : 'Unknown Role';
@@ -140,7 +140,7 @@ export default function AssessmentSummaryPage() {
                         <p className="text-7xl font-bold text-primary">{Math.round(attempt.finalScore!)}%</p>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
-                        <Button className="w-full" onClick={() => router.push(`/dashboard/assessments/${attempt.id}`)}>
+                        <Button className="w-full" onClick={() => router.push(`/dashboard/assessments/${attempt.docId}`)}>
                             <BarChart4 className="mr-2 h-4 w-4" />
                             View Detailed Results
                         </Button>

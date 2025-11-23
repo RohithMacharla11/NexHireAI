@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
@@ -160,7 +159,7 @@ const AssessmentRunner = () => {
           
           toast({ title: "Assessment Submitted!", description: "Redirecting to your results summary." });
           reset();
-          router.push(`/dashboard/assessments/${newAttemptDocRef.id}`);
+          router.push(`/dashboard/assessments/${newAttemptDocRef.id}/summary`);
 
       } catch (error) {
           console.error("Error submitting and scoring assessment:", error);
