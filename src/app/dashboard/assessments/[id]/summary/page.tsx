@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -25,6 +24,7 @@ import { motion } from 'framer-motion';
 import { useAssessmentStore } from '@/hooks/use-assessment-store';
 import { useToast } from '@/hooks/use-toast';
 import { generateAssessment } from '@/ai/flows/generate-assessment-flow';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function AssessmentSummaryPage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -76,9 +76,9 @@ export default function AssessmentSummaryPage() {
         startRetakeTransition(async () => {
             try {
                 let newAssessment;
-                // If it was an official template-based assessment
-                if (attempt.assessmentId === attempt.rootAssessmentId) {
-                    const templateDoc = await getDoc(doc(firestore, 'assessments', attempt.assessmentId));
+                // If it was an official template-based assessment, use the root ID
+                if (attempt.rootAssessmentId && attempt.assessmentId === attempt.rootAssessmentId) {
+                    const templateDoc = await getDoc(doc(firestore, 'assessments', attempt.rootAssessmentId));
                     if (!templateDoc.exists()) throw new Error("Original assessment template not found.");
                     
                     const template = templateDoc.data() as AssessmentTemplate;
@@ -92,20 +92,21 @@ export default function AssessmentSummaryPage() {
                     const orderedQuestions = template.questionIds.map(id => questions.find(q => q.id === id)).filter(Boolean) as Question[];
 
                     newAssessment = {
-                        id: template.id,
+                        id: uuidv4(), // Generate a NEW id for the assessment instance to avoid conflicts
                         roleId: template.roleId,
                         roleName: template.name,
                         questions: orderedQuestions,
                         totalTimeLimit: template.duration * 60,
                         isTemplate: true,
                         templateId: template.id,
-                        rootAssessmentId: attempt.rootAssessmentId,
+                        rootAssessmentId: attempt.rootAssessmentId, // Carry over the root ID
                     };
                 } else {
                     // It was a practice assessment, so generate a new one for the same role
                     toast({ title: 'Generating New Practice Test...' });
                     newAssessment = await generateAssessment(attempt.roleId);
-                    newAssessment.rootAssessmentId = attempt.rootAssessmentId;
+                    // For practice tests, the root ID should be the role ID
+                    newAssessment.rootAssessmentId = attempt.roleId;
                 }
                 
                 assessmentStore.setAssessment(newAssessment);

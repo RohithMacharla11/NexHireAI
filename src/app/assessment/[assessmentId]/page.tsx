@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -99,7 +98,7 @@ const AssessmentRunner = () => {
           submittedAt: Date.now(),
           responses: finalResponses,
           questions: assessment.questions, // Pass questions for scoring context
-          rootAssessmentId: assessment.rootAssessmentId || (assessment.isTemplate ? assessment.templateId! : assessment.id),
+          rootAssessmentId: assessment.rootAssessmentId,
       };
 
       try {
