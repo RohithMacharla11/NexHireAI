@@ -74,6 +74,9 @@ export interface AssessmentTemplate {
 
 export type CandidateStatus = 'Shortlisted' | 'Under Review' | 'Hired' | 'Rejected';
 
+// Represents a lightweight snapshot of questions taken during an attempt
+export type QuestionSnapshot = Pick<Question, 'id' | 'questionText' | 'options' | 'correctAnswer' | 'type' | 'skill' | 'difficulty' | 'starterCode' | 'testCases'>;
+
 export interface AssessmentAttempt {
     id: string;
     userId: string;
@@ -83,6 +86,7 @@ export interface AssessmentAttempt {
     submittedAt?: number; // timestamp
     responses: UserResponse[];
     rootAssessmentId?: string; // ID to group all attempts of the same assessment
+    questionSnapshots?: QuestionSnapshot[]; // Snapshot of questions at time of attempt
     // --- Post-Submission Fields ---
     finalScore?: number;
     skillScores?: Record<string, number | 'Not available'>; 

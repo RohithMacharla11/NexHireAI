@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState, useTransition, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useAssessmentStore } from '@/hooks/use-assessment-store';
 import { useToast } from '@/hooks/use-toast';
@@ -12,9 +12,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Timer, Loader2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, addDoc, collection } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import type { AssessmentAttempt, UserResponse } from '@/lib/types';
+import type { AssessmentAttempt, Question } from '@/lib/types';
 import { CodeEditor } from '@/components/assessment/CodeEditor';
 import { scoreAssessment } from '@/ai/flows/score-assessment-flow';
 
@@ -38,6 +38,7 @@ const AssessmentRunner = () => {
   } = useAssessmentStore();
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const questionStartTimeRef = useRef<number>(Date.now());
 
   // Redirect if user is not logged in or assessment is not loaded
   useEffect(() => {
@@ -72,6 +73,38 @@ const AssessmentRunner = () => {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startTime, assessment]);
+  
+  // Reset question timer when question changes
+  useEffect(() => {
+    questionStartTimeRef.current = Date.now();
+  }, [currentQuestionIndex]);
+
+  const currentQuestion = assessment?.questions[currentQuestionIndex];
+  const currentResponse = currentQuestion ? responses[currentQuestion.id] : undefined;
+
+  const saveCurrentQuestionTime = () => {
+    if (!currentQuestion) return;
+    const now = Date.now();
+    const timeSpentOnThisQuestion = (now - questionStartTimeRef.current) / 1000; // in seconds
+    const existingTime = currentResponse?.timeTaken || 0;
+    
+    setResponse(currentQuestion.id, { 
+        ...currentResponse,
+        timeTaken: existingTime + timeSpentOnThisQuestion 
+    });
+
+    questionStartTimeRef.current = now;
+  };
+
+  const handleNextWithCheck = () => {
+    saveCurrentQuestionTime();
+    nextQuestion();
+  };
+
+  const handlePrevWithCheck = () => {
+    saveCurrentQuestionTime();
+    prevQuestion();
+  };
 
   const handleSubmit = () => {
     if (!user || !assessment || !startTime) {
@@ -79,39 +112,52 @@ const AssessmentRunner = () => {
         return;
     }
     
+    saveCurrentQuestionTime(); // Save the very last question's time
+
     startSubmitting(async () => {
       toast({ title: "Submitting Assessment", description: "Evaluating your answers. This may take a moment." });
       
-      const finalResponses = Object.values(responses).map(response => ({
-        ...response,
-        timeTaken: (Date.now() - (startTime || Date.now())) / (assessment.questions.length || 1), // Approximate time per question
+      const finalResponses = Object.values(responses);
+
+      // Create a lightweight snapshot of the questions
+      const questionSnapshots = assessment.questions.map(q => ({
+          id: q.id,
+          questionText: q.questionText,
+          options: q.options || [],
+          correctAnswer: q.correctAnswer, // Saving this makes results self-contained
+          type: q.type,
+          skill: q.skill,
+          difficulty: q.difficulty,
+          starterCode: q.starterCode,
+          testCases: q.testCases
       }));
 
       const attemptShell: AssessmentAttempt = {
-          id: assessment.id,
+          id: assessment.id, // Temporary ID
           userId: user.id,
           assessmentId: assessment.id,
           roleId: assessment.roleId,
           startedAt: startTime,
           submittedAt: Date.now(),
           responses: finalResponses,
-          questions: assessment.questions,
-          rootAssessmentId: assessment.rootAssessmentId || assessment.id,
+          questions: assessment.questions, // Pass full questions for scoring
+          rootAssessmentId: assessment.rootAssessmentId,
       };
 
       try {
           const finalAttempt = await scoreAssessment(attemptShell);
           const { questions, ...attemptToSave } = finalAttempt;
 
-          const attemptDocRef = doc(firestore, `users/${user.id}/assessments`, attemptToSave.id);
-          await setDoc(attemptDocRef, {
+          const assessmentsCollectionRef = collection(firestore, `users/${user.id}/assessments`);
+          const newAttemptDocRef = await addDoc(assessmentsCollectionRef, {
               ...attemptToSave,
+              questionSnapshots, // Save the snapshots
               userId: user.id,
           });
           
           toast({ title: "Assessment Submitted!", description: "Redirecting to your results summary." });
           reset();
-          router.push(`/dashboard/assessments/${attemptDocRef.id}`);
+          router.push(`/dashboard/assessments/${newAttemptDocRef.id}`);
 
       } catch (error) {
           console.error("Error submitting and scoring assessment:", error);
@@ -121,7 +167,7 @@ const AssessmentRunner = () => {
     });
   };
 
-  if (authLoading || !isHydrated || !assessment) {
+  if (authLoading || !isHydrated || !assessment || !currentQuestion) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -130,14 +176,8 @@ const AssessmentRunner = () => {
     );
   }
 
-  const currentQuestion = assessment.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / assessment.questions.length) * 100;
-  const currentResponse = responses[currentQuestion.id];
   
-  const handleNextWithCheck = () => {
-    nextQuestion();
-  }
-
   const formatTime = (seconds: number) => {
     if (seconds < 0) return '00:00';
     const mins = Math.floor(seconds / 60);
@@ -209,7 +249,7 @@ const AssessmentRunner = () => {
         </div>
 
         <CardFooter className="flex justify-between border-t pt-6 sticky bottom-0 bg-card/80 backdrop-blur-sm">
-            <Button variant="outline" onClick={prevQuestion} disabled={isSubmitting || currentQuestionIndex === 0}>
+            <Button variant="outline" onClick={handlePrevWithCheck} disabled={isSubmitting || currentQuestionIndex === 0}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             

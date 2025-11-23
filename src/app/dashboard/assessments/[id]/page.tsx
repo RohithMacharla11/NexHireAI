@@ -1,11 +1,11 @@
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, getDoc, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { AssessmentAttempt, Role, Question, UserResponse } from '@/lib/types';
-import { Loader2, ArrowLeft, Download, BarChart, BrainCircuit, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Download, BarChart, BrainCircuit, CheckCircle, XCircle, Terminal } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -15,6 +15,49 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CodeEditor } from '@/components/assessment/CodeEditor';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+
+// Helper component to display detailed coding feedback
+const CodingFeedback = ({ executionResult }: { executionResult: any[] }) => {
+  if (!executionResult || executionResult.length === 0) return null;
+
+  return (
+    <div className="mt-4 space-y-3">
+      <h4 className="text-sm font-semibold flex items-center gap-2">
+        <Terminal className="h-4 w-4" /> Code Execution Results
+      </h4>
+      {executionResult.map((result, idx) => (
+        <div key={idx} className={`p-3 rounded-md text-xs font-mono border ${result.status === 'Passed' ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+          <div className="flex justify-between mb-2 font-bold">
+            <span className={result.status === 'Passed' ? 'text-green-600' : 'text-red-600'}>
+              Test Case {idx + 1}: {result.status}
+            </span>
+            <span className="text-muted-foreground">{result.time}</span>
+          </div>
+          
+          {result.status === 'Failed' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="block text-muted-foreground mb-1">Your Output:</span>
+                <div className="bg-background p-2 rounded border border-border/50 whitespace-pre-wrap">
+                  {result.output}
+                </div>
+              </div>
+              <div>
+                <span className="block text-muted-foreground mb-1">Expected Output:</span>
+                <div className="bg-background p-2 rounded border border-border/50 whitespace-pre-wrap">
+                  {result.expectedOutput}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 
 type AttemptWithDetails = AssessmentAttempt & {
     roleName?: string;
@@ -38,19 +81,13 @@ export default function AssessmentResultPage() {
         const roleName = roleDoc.exists() ? (roleDoc.data() as Role).name : 'Unknown Role';
 
         let questionsWithAnswers: (Question & UserResponse)[] = [];
-        const questionIds = attemptData.responses?.map(res => res.questionId) || [];
+        // Prioritize using the question snapshot from the attempt
+        const questionsSource = attemptData.questionSnapshots || [];
         
-        if (questionIds.length > 0) {
-            let questionsFromDb: Question[] = [];
-            for (let i = 0; i < questionIds.length; i += 30) {
-                const chunk = questionIds.slice(i, i + 30);
-                const qQuery = query(collection(firestore, 'questionBank'), where('__name__', 'in', chunk));
-                const questionsSnapshot = await getDocs(qQuery);
-                questionsFromDb.push(...questionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Question)));
-            }
-            questionsWithAnswers = attemptData.responses
+        if (questionsSource.length > 0) {
+             questionsWithAnswers = attemptData.responses
                 .map(res => {
-                    const question = questionsFromDb.find(q => q.id === res.questionId);
+                    const question = questionsSource.find(q => q.id === res.questionId);
                     if (!question) return null;
                     return { ...question, ...res };
                 })
@@ -251,12 +288,17 @@ export default function AssessmentResultPage() {
                                             </div>
                                         )}
                                         {qa.type === 'coding' && (
-                                             <CodeEditor 
-                                                question={qa}
-                                                response={qa}
-                                                onResponseChange={() => {}}
-                                                isReadOnly={true}
-                                            />
+                                             <div className="space-y-4">
+                                                <CodeEditor 
+                                                    question={qa}
+                                                    response={qa}
+                                                    onResponseChange={() => {}}
+                                                    isReadOnly={true}
+                                                />
+                                                {qa.executionResult && (
+                                                    <CodingFeedback executionResult={qa.executionResult} />
+                                                )}
+                                            </div>
                                         )}
                                     </CollapsibleContent>
                                 </Collapsible>
