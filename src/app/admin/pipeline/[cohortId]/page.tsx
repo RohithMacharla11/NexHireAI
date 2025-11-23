@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, query, onSnapshot, getDoc, doc, where, getDocs, writeBatch, updateDoc, collectionGroup, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
@@ -36,61 +35,91 @@ export default function LeaderboardPage() {
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const constructLeaderboard = useCallback((cohortData: Cohort, users: User[], attempts: AssessmentAttempt[]) => {
+        const entries = users.map(user => {
+            const userAttempt = attempts.find(a => a.userId === user.id);
+            const status: ExtendedCandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || (userAttempt ? 'Under Review' : 'Yet to Take');
+            return { user, attempt: userAttempt, status };
+        });
+
+        entries.sort((a, b) => (b.attempt?.finalScore ?? -1) - (a.attempt?.finalScore ?? -1));
+        setLeaderboard(entries);
+    }, []);
+
     useEffect(() => {
         if (!firestore || !cohortId) return;
 
-        const cohortRef = doc(firestore, 'cohorts', cohortId);
-        const unsubscribe = onSnapshot(cohortRef, async (docSnap) => {
-            if (!docSnap.exists()) {
-                toast({ title: "Cohort not found", variant: "destructive" });
-                router.push('/admin/pipeline');
-                return;
-            }
+        const fetchInitialData = async () => {
             setIsLoading(true);
-            const cohortData = { id: docSnap.id, ...docSnap.data() } as Cohort;
-            setCohort(cohortData);
+            try {
+                const cohortRef = doc(firestore, 'cohorts', cohortId);
+                const cohortSnap = await getDoc(cohortRef);
 
-            if (!cohortData.candidateIds || cohortData.candidateIds.length === 0) {
-                 setLeaderboard([]);
-                 setIsLoading(false);
-                 return;
-            }
+                if (!cohortSnap.exists()) {
+                    toast({ title: "Cohort not found", variant: "destructive" });
+                    router.push('/admin/pipeline');
+                    return;
+                }
 
-            // Fetch all users in the cohort
-            const usersRef = collection(firestore, 'users');
-            const usersQuery = query(usersRef, where('__name__', 'in', cohortData.candidateIds));
-            const usersSnap = await getDocs(usersQuery);
-            const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User));
+                const cohortData = { id: cohortSnap.id, ...cohortSnap.data() } as Cohort;
+                setCohort(cohortData);
 
-            let attempts: AssessmentAttempt[] = [];
-            if (cohortData.assignedAssessmentId) {
-                // Correctly fetch all attempts for this specific cohort and assessment template
-                 const attemptsQuery = query(
-                    collectionGroup(firestore, 'assessments'),
-                    where('rootAssessmentId', '==', cohortData.assignedAssessmentId),
-                    where('userId', 'in', cohortData.candidateIds)
-                );
-                const attemptsSnap = await getDocs(attemptsQuery);
-                attempts = attemptsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AssessmentAttempt));
-            }
-            
-            const entries = users.map(user => {
-                const userAttempt = attempts.find(a => a.userId === user.id);
-                // Default status to 'Under Review' if they've taken it, otherwise check cohort status or 'Yet to Take'
-                const status: ExtendedCandidateStatus = (cohortData.statuses && cohortData.statuses[user.id]) || (userAttempt ? 'Under Review' : 'Yet to Take');
+                if (!cohortData.candidateIds || cohortData.candidateIds.length === 0) {
+                    setLeaderboard([]);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Fetch all users and attempts in parallel
+                const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', cohortData.candidateIds));
                 
-                return { user, attempt: userAttempt, status };
-            });
+                let attemptsQuery;
+                if (cohortData.assignedAssessmentId) {
+                    attemptsQuery = query(
+                        collectionGroup(firestore, 'assessments'),
+                        where('rootAssessmentId', '==', cohortData.assignedAssessmentId),
+                        where('userId', 'in', cohortData.candidateIds)
+                    );
+                }
 
-            // Sort by score if available, otherwise keep original order
-            entries.sort((a, b) => (b.attempt?.finalScore ?? -1) - (a.attempt?.finalScore ?? -1));
+                const [usersSnap, attemptsSnap] = await Promise.all([
+                    getDocs(usersQuery),
+                    attemptsQuery ? getDocs(attemptsQuery) : Promise.resolve(null)
+                ]);
+                
+                const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User));
+                const attempts = attemptsSnap ? attemptsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AssessmentAttempt)) : [];
 
-            setLeaderboard(entries);
-            setIsLoading(false);
+                constructLeaderboard(cohortData, users, attempts);
+
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+                toast({ title: 'Error', description: 'Failed to load leaderboard data.', variant: 'destructive' });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchInitialData();
+
+        // Separate, lightweight listener just for cohort document changes (like statuses)
+        const cohortRef = doc(firestore, 'cohorts', cohortId);
+        const unsubscribe = onSnapshot(cohortRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const updatedCohortData = { id: docSnap.id, ...docSnap.data() } as Cohort;
+                setCohort(updatedCohortData); // Update cohort state
+                // Reconstruct leaderboard with new cohort data but existing user/attempt data
+                setLeaderboard(prev => {
+                     const users = prev.map(p => p.user);
+                     const attempts = prev.map(p => p.attempt).filter(Boolean) as AssessmentAttempt[];
+                     constructLeaderboard(updatedCohortData, users, attempts);
+                     return prev; // No immediate change needed, constructLeaderboard handles it
+                });
+            }
         });
 
         return () => unsubscribe();
-    }, [firestore, cohortId, router, toast]);
+    }, [firestore, cohortId, router, toast, constructLeaderboard]);
 
     const handleStatusChange = async (userId: string, newStatus: CandidateStatus) => {
         if (!firestore || !cohort) return;
