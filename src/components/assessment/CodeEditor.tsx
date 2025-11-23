@@ -131,6 +131,7 @@ export function CodeEditor({ question, response, onResponseChange, isReadOnly = 
                             <SelectItem value="cpp">C++</SelectItem>
                             <SelectItem value="html">HTML</SelectItem>
                             <SelectItem value="css">CSS</SelectItem>
+                            <SelectItem value="markdown">Markdown</SelectItem>
                             <SelectItem value="shell">Shell</SelectItem>
                             <SelectItem value="php">PHP</SelectItem>
                         </SelectContent>
