@@ -112,17 +112,15 @@ export default function SkillAssessmentPage() {
 
         attemptsSnap.docs.forEach(doc => {
             const attempt = { ...doc.data(), docId: doc.id } as AssessmentAttempt;
-            // Check if it's a practice test by seeing if the rootAssessmentId is a roleId
-            if (attempt.rootAssessmentId && !attempt.assessmentId.startsWith('assessment_')) {
+            // A practice test has a rootAssessmentId that is the same as its roleId
+            if (attempt.rootAssessmentId && attempt.rootAssessmentId === attempt.roleId) {
               const existing = latestPracticeAttempts.get(attempt.rootAssessmentId);
-              if (!existing || attempt.submittedAt! > existing.submittedAt!) {
+              if (!existing || (attempt.submittedAt && existing.submittedAt && attempt.submittedAt > existing.submittedAt)) {
                 latestPracticeAttempts.set(attempt.rootAssessmentId, attempt);
               }
-            } else {
+            } else if (attempt.rootAssessmentId) {
               // It's an official assessment
-              if (attempt.rootAssessmentId) {
-                officialAttemptedIds.add(attempt.rootAssessmentId);
-              }
+              officialAttemptedIds.add(attempt.rootAssessmentId);
             }
         });
         setPracticeAttempts(latestPracticeAttempts);
@@ -171,7 +169,8 @@ export default function SkillAssessmentPage() {
       toast({ title: `Generating Practice for ${roleName}`, description: 'The AI is creating a unique set of 30 questions. Please wait.' });
       try {
         const assessment = await generateAssessment(roleId);
-        assessment.rootAssessmentId = roleId;
+        // This is a practice assessment, so the root ID is the role ID itself.
+        assessment.rootAssessmentId = roleId; 
         assessmentStore.setAssessment(assessment);
         toast({ title: 'Practice Ready!', description: `Your test for ${roleName} is about to begin.` });
         router.push(`/assessment/${assessment.id}`);
@@ -213,7 +212,7 @@ export default function SkillAssessmentPage() {
             totalTimeLimit: template.duration * 60,
             isTemplate: true,
             templateId: template.id,
-            rootAssessmentId: template.id,
+            rootAssessmentId: template.id, // The root ID is the template ID
         });
         router.push(`/assessment/${newAssessmentId}`);
 
