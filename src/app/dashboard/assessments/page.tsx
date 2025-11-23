@@ -35,14 +35,15 @@ export default function AssessmentsPage() {
         
         const attemptsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
           const attempt = { id: docSnapshot.id, ...docSnapshot.data() } as AssessmentAttempt;
+          let roleName = 'Unknown Role';
           // Ensure roleId exists before trying to fetch role
-          if (!attempt.roleId) {
-            console.warn(`Attempt ${attempt.id} is missing a roleId.`);
-            return { ...attempt, roleName: 'Unknown Role' };
+          if (attempt.roleId) {
+            const roleDocRef = doc(firestore, 'roles', attempt.roleId);
+            const roleDoc = await getDoc(roleDocRef);
+            if (roleDoc.exists()) {
+                roleName = (roleDoc.data() as Role).name;
+            }
           }
-          const roleDocRef = doc(firestore, 'roles', attempt.roleId);
-          const roleDoc = await getDoc(roleDocRef);
-          const roleName = roleDoc.exists() ? (roleDoc.data() as Role).name : 'Unknown Role';
           return { ...attempt, roleName };
         }));
 

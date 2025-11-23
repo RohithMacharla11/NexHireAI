@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, getDoc, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
@@ -76,15 +76,19 @@ export default function AssessmentResultPage() {
     const initialAttemptId = params.id as string;
 
     const getDetailedAttempt = async (attemptData: AssessmentAttempt): Promise<AttemptWithDetails> => {
-        const roleDocRef = doc(firestore, 'roles', attemptData.roleId);
-        const roleDoc = await getDoc(roleDocRef);
-        const roleName = roleDoc.exists() ? (roleDoc.data() as Role).name : 'Unknown Role';
-
+        let roleName = 'Unknown Role';
+        if (attemptData.roleId) {
+            const roleDocRef = doc(firestore, 'roles', attemptData.roleId);
+            const roleDoc = await getDoc(roleDocRef);
+            if (roleDoc.exists()) {
+                 roleName = (roleDoc.data() as Role).name;
+            }
+        }
+        
         let questionsWithAnswers: (Question & UserResponse)[] = [];
-        // Prioritize using the question snapshot from the attempt
         const questionsSource = attemptData.questionSnapshots || [];
         
-        if (questionsSource.length > 0) {
+        if (questionsSource.length > 0 && attemptData.responses) {
              questionsWithAnswers = attemptData.responses
                 .map(res => {
                     const question = questionsSource.find(q => q.id === res.questionId);
@@ -119,10 +123,10 @@ export default function AssessmentResultPage() {
                 setCurrentAttempt(detailedInitialAttempt);
 
                 // Step 2: If a rootAssessmentId exists, fetch all related historical attempts
-                if (initialAttemptData.rootAssessmentId) {
+                if (detailedInitialAttempt.rootAssessmentId) {
                     const historyQuery = query(
                         collection(firestore, 'users', user.id, 'assessments'),
-                        where('rootAssessmentId', '==', initialAttemptData.rootAssessmentId),
+                        where('rootAssessmentId', '==', detailedInitialAttempt.rootAssessmentId),
                         orderBy('submittedAt', 'asc')
                     );
                     const historySnapshot = await getDocs(historyQuery);

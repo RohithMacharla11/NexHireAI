@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Timer, Loader2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { doc, addDoc, collection } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import type { AssessmentAttempt, Question } from '@/lib/types';
+import type { AssessmentAttempt, UserResponse, Question } from '@/lib/types';
 import { CodeEditor } from '@/components/assessment/CodeEditor';
 import { scoreAssessment } from '@/ai/flows/score-assessment-flow';
 
@@ -124,7 +124,7 @@ const AssessmentRunner = () => {
           id: q.id,
           questionText: q.questionText,
           options: q.options || [],
-          correctAnswer: q.correctAnswer, // Saving this makes results self-contained
+          correctAnswer: q.correctAnswer,
           type: q.type,
           skill: q.skill,
           difficulty: q.difficulty,
