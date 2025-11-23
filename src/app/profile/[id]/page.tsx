@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { analyzeResume } from '@/ai/flows/analyze-resume-flow';
 import { PersonalUnderstanding } from '@/components/profile/PersonalUnderstanding';
 import { motion } from 'framer-motion';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '../ui/card';
-import { Button } from '../ui/button';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 type View = 'profile' | 'edit' | 'analysis';
 
@@ -193,48 +193,51 @@ export default function ProfilePage() {
   const hasAnalysis = !!profileData.analysis?.summary;
 
   return (
-    <div className="w-full h-full flex items-center justify-center md:items-end md:justify-end p-4 md:p-8">
-        <motion.div
-            className="w-full max-w-4xl h-[85vh] preserve-3d"
-            initial={false}
-            animate={{ rotateY: rotation }}
-            transition={{ duration: 0.7, ease: 'easeInOut' }}
-            style={{ perspective: '1000px' }}
-        >
-            {/* Profile Face */}
-            <div className="absolute w-full h-full backface-hidden" style={{ display: view === 'profile' ? 'block' : 'none' }}>
-                <ProfileCard 
-                    profileData={profileData} 
-                    onRunAnalysis={runAnalysis}
-                    onEdit={() => handleViewChange('edit')}
-                    onViewInsights={hasAnalysis ? () => handleViewChange('analysis') : undefined}
-                    onAvatarUpload={(file) => handleProfileUpdate({ avatarUrl: URL.createObjectURL(file)})}
-                    isOwnProfile={isOwnProfile}
-                />
-            </div>
+    <div className="relative min-h-full w-full p-4 md:p-8">
+        <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.1),rgba(255,255,255,0))]"></div>
+        <div className="w-full h-full flex items-center justify-center">
+            <motion.div
+                className="w-full max-w-4xl h-[85vh] preserve-3d"
+                initial={false}
+                animate={{ rotateY: rotation }}
+                transition={{ duration: 0.7, ease: 'easeInOut' }}
+                style={{ perspective: '1000px' }}
+            >
+                {/* Profile Face */}
+                <div className="absolute w-full h-full backface-hidden" style={{ display: view === 'profile' ? 'block' : 'none' }}>
+                    <ProfileCard 
+                        profileData={profileData} 
+                        onRunAnalysis={runAnalysis}
+                        onEdit={() => handleViewChange('edit')}
+                        onViewInsights={hasAnalysis ? () => handleViewChange('analysis') : undefined}
+                        onAvatarUpload={(file) => handleProfileUpdate({ avatarUrl: URL.createObjectURL(file)})}
+                        isOwnProfile={isOwnProfile}
+                    />
+                </div>
 
-            {/* Edit Face */}
-            <div className="absolute w-full h-full backface-hidden rotate-y-180" style={{ display: view === 'edit' ? 'block' : 'none' }}>
-                    <div className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40 flex flex-col">
-                    <div className="flex-grow max-h-full overflow-y-auto pr-4">
-                        <EditProfileForm 
-                            profileData={profileData} 
-                            onSave={handleProfileUpdate} 
-                            onCancel={() => handleViewChange('profile')} 
-                            isOwnProfile={isOwnProfile}
-                        />
+                {/* Edit Face */}
+                <div className="absolute w-full h-full backface-hidden rotate-y-180" style={{ display: view === 'edit' ? 'block' : 'none' }}>
+                        <div className="w-full h-full rounded-3xl border border-white/10 bg-card/80 p-6 shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-black/40 flex flex-col">
+                        <div className="flex-grow max-h-full overflow-y-auto pr-4">
+                            <EditProfileForm 
+                                profileData={profileData} 
+                                onSave={handleProfileUpdate} 
+                                onCancel={() => handleViewChange('profile')} 
+                                isOwnProfile={isOwnProfile}
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Analysis Face */}
-            <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)', display: view === 'analysis' ? 'block' : 'none' }}>
-                <PersonalUnderstanding 
-                    analysis={profileData.analysis?.summary}
-                    onFlip={() => handleViewChange('profile')}
-                />
-            </div>
-        </motion.div>
+                {/* Analysis Face */}
+                <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(-180deg)', display: view === 'analysis' ? 'block' : 'none' }}>
+                    <PersonalUnderstanding 
+                        analysis={profileData.analysis?.summary}
+                        onFlip={() => handleViewChange('profile')}
+                    />
+                </div>
+            </motion.div>
+        </div>
     </div>
   );
 }
