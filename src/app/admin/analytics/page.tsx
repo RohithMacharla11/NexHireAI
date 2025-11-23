@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -10,9 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { collection, collectionGroup, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, where, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import type { User, AssessmentAttempt } from '@/lib/types';
+import type { User, AssessmentAttempt, Role } from '@/lib/types';
 import { subMonths, format, startOfMonth } from 'date-fns';
 
 const containerVariants = {
@@ -60,7 +59,8 @@ export default function AnalyticsPage() {
                 const oneMonthAgo = subMonths(now, 1);
                 const newCandidatesCount = userSnap.docs.filter(doc => {
                     const data = doc.data() as User;
-                    return data.createdAt && (data.createdAt as any).seconds * 1000 > oneMonthAgo.getTime();
+                     const createdAt = data.createdAt ? (typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt as any).seconds * 1000) : 0;
+                    return createdAt > oneMonthAgo.getTime();
                 }).length;
 
                 const totalAttempts = attemptSnap.size;
@@ -84,8 +84,9 @@ export default function AnalyticsPage() {
                 }
                 userSnap.docs.forEach(doc => {
                      const c = doc.data() as User;
-                     if (c.createdAt && (c.createdAt as any).seconds) {
-                         const joinDate = new Date((c.createdAt as any).seconds * 1000);
+                     const createdAt = c.createdAt ? (typeof c.createdAt === 'number' ? c.createdAt : (c.createdAt as any).seconds * 1000) : 0;
+                     if (createdAt) {
+                         const joinDate = new Date(createdAt);
                          if (joinDate >= startOfMonth(subMonths(now, 5))) {
                             const month = format(joinDate, 'MMM');
                             if (monthlyData[month]) monthlyData[month].Candidates++;
@@ -106,19 +107,26 @@ export default function AnalyticsPage() {
                 ]);
                 
                 // --- Process Leaderboard Data ---
-                 const topAttempts = attemptSnap.docs.slice(0, 4);
+                 const topAttempts = attemptSnap.docs
+                    .sort((a,b) => (b.data().finalScore || 0) - (a.data().finalScore || 0))
+                    .slice(0, 4);
+
                  const leaderboardUsers = await Promise.all(
                      topAttempts.map(async (attemptDoc) => {
                          const attemptData = attemptDoc.data() as AssessmentAttempt;
+                         if (!attemptData.userId) return null;
+                         
                          const userDoc = await getDoc(doc(firestore, 'users', attemptData.userId));
                          if (!userDoc.exists()) return null;
                          const userData = userDoc.data() as User;
 
                          // Fetch role name from roleId
-                         let roleName = 'N/A';
+                         let roleName = 'Practice Test';
                          if (attemptData.roleId) {
-                            const roleDoc = await getDoc(doc(firestore, 'roles', attemptData.roleId));
-                            if (roleDoc.exists()) roleName = roleDoc.data().name;
+                            try {
+                                const roleDoc = await getDoc(doc(firestore, 'roles', attemptData.roleId));
+                                if (roleDoc.exists()) roleName = (roleDoc.data() as Role).name;
+                            } catch {}
                          }
                          
                          return {
@@ -239,7 +247,7 @@ export default function AnalyticsPage() {
                             <div className="space-y-4">
                                 {leaderboard.map((candidate, index) => (
                                     <div key={candidate.id} className="flex items-center gap-4 hover:bg-muted/50 p-2 rounded-lg">
-                                        <div className="flex items-center gap-2 w-12">
+                                        <div className="flex items-center justify-center w-12 shrink-0">
                                             {getRankIcon(index)}
                                         </div>
                                         <Avatar>
@@ -261,7 +269,7 @@ export default function AnalyticsPage() {
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-muted-foreground text-center">No recent assessment data to display.</p>
+                            <p className="text-muted-foreground text-center py-4">No recent assessment data to display.</p>
                         )}
                     </CardContent>
                 </Card>
