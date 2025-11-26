@@ -7,7 +7,9 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import type { AssessmentAttempt, UserResponse, Question } from '@/lib/types';
+import type { AssessmentAttempt, UserResponse, Question, User } from '@/lib/types';
+import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { initializeFirebaseForServer } from '@/firebase/server-init';
 
 
 // Schema for Prompt A (Scoring Short Answers)
@@ -40,7 +42,8 @@ export const scoreAssessmentFlow = ai.defineFlow(
     outputSchema: z.custom<Omit<AssessmentAttempt, 'questions'>>(),
   },
   async (attempt) => {
-    const { questions, responses } = attempt;
+    const { firestore } = initializeFirebaseForServer();
+    const { questions, responses, userId } = attempt;
     if (!questions || !responses) throw new Error("Questions and responses are required for scoring.");
 
     // --- Defensive Data Handling & Helpers ---
@@ -225,6 +228,39 @@ Rules:
             })
         };
     });
+
+    // --- 8. Gamification Logic ---
+    try {
+        const userRef = doc(firestore, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            const userData = userSnap.data() as User;
+            const currentBadges = new Set(userData.badges || []);
+            const newBadges: string[] = [];
+
+            // Award "Accuracy Master" badge
+            if (finalScore >= 90 && !currentBadges.has('Accuracy Master')) {
+                newBadges.push('Accuracy Master');
+            }
+            // Award "First Step" badge
+            if (!currentBadges.has('First Step')) {
+                newBadges.push('First Step');
+            }
+            // More badge logic can be added here...
+            
+            const xpEarned = (finalScore * 2) + 50; // 50 XP for completion, plus score-based bonus
+
+            if (xpEarned > 0 || newBadges.length > 0) {
+                 await updateDoc(userRef, {
+                    xp: increment(xpEarned),
+                    badges: [...currentBadges, ...newBadges],
+                 });
+            }
+        }
+    } catch (gamificationError) {
+        console.error("Failed to update user profile with gamification rewards:", gamificationError);
+    }
+    
 
     const { questions: _, ...restOfAttempt } = attempt;
 
