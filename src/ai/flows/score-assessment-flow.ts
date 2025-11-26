@@ -238,22 +238,20 @@ Rules:
             const currentBadges = new Set(userData.badges || []);
             
             // Award "Accuracy Master" badge
-            if (finalScore >= 90 && !currentBadges.has('Accuracy Master')) {
+            if (finalScore >= 90) {
                 currentBadges.add('Accuracy Master');
             }
             // Award "First Step" badge
-            if (!currentBadges.has('First Step')) {
-                currentBadges.add('First Step');
-            }
+            currentBadges.add('First Step');
             
             const xpEarned = (finalScore * 2) + 50; // 50 XP for completion, plus score-based bonus
 
-            if (xpEarned > 0 || currentBadges.size > (userData.badges?.length || 0)) {
-                 await updateDoc(userRef, {
-                    xp: increment(xpEarned),
-                    badges: Array.from(currentBadges), // Convert Set back to array for Firestore
-                 });
-            }
+            const updatePayload: Record<string, any> = {
+                xp: increment(xpEarned),
+                badges: Array.from(currentBadges),
+            };
+
+            await updateDoc(userRef, updatePayload);
         }
     } catch (gamificationError) {
         console.error("Failed to update user profile with gamification rewards:", gamificationError);
@@ -276,5 +274,3 @@ export async function scoreAssessment(attempt: AssessmentAttempt): Promise<Omit<
     const scoredData = await scoreAssessmentFlow(attempt);
     return scoredData;
 }
-
-    
