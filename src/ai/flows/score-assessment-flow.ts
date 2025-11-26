@@ -236,24 +236,22 @@ Rules:
         if (userSnap.exists()) {
             const userData = userSnap.data() as User;
             const currentBadges = new Set(userData.badges || []);
-            const newBadges: string[] = [];
-
+            
             // Award "Accuracy Master" badge
             if (finalScore >= 90 && !currentBadges.has('Accuracy Master')) {
-                newBadges.push('Accuracy Master');
+                currentBadges.add('Accuracy Master');
             }
             // Award "First Step" badge
             if (!currentBadges.has('First Step')) {
-                newBadges.push('First Step');
+                currentBadges.add('First Step');
             }
-            // More badge logic can be added here...
             
             const xpEarned = (finalScore * 2) + 50; // 50 XP for completion, plus score-based bonus
 
-            if (xpEarned > 0 || newBadges.length > 0) {
+            if (xpEarned > 0 || currentBadges.size > (userData.badges?.length || 0)) {
                  await updateDoc(userRef, {
                     xp: increment(xpEarned),
-                    badges: [...currentBadges, ...newBadges],
+                    badges: Array.from(currentBadges), // Convert Set back to array for Firestore
                  });
             }
         }
@@ -278,3 +276,5 @@ export async function scoreAssessment(attempt: AssessmentAttempt): Promise<Omit<
     const scoredData = await scoreAssessmentFlow(attempt);
     return scoredData;
 }
+
+    
