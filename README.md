@@ -9,11 +9,11 @@
     <strong>AI-Powered Skill Assessments for the Future of Work.</strong>
     <br />
     <br />
-    <a href="#">View Demo</a>
+    <a href="https://nex-hire-ai.vercel.app/">View Demo</a>
     ·
-    <a href="https://github.com/your-username/nexhire-ai/issues">Report Bug</a>
+    <a href="https://github.com/RohithMacharla11/NexHireAI/issues">Report Bug</a>
     ·
-    <a href="https://github.com/your-username/nexhire-ai/issues">Request Feature</a>
+    <a href="https://github.com/RohithMacharla11/NexHireAI/issues">Request Feature</a>
   </p>
 </div>
 
